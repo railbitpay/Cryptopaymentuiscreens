@@ -9,7 +9,7 @@ export function DesignSystem() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-12">
       <div>
-        <h1 className="text-gray-900 mb-2">Canadian Crypto Pay Design System</h1>
+        <h1 className="text-gray-900 mb-2">RailBit Design System</h1>
         <p className="text-gray-600">Complete UI component library and design tokens</p>
       </div>
 

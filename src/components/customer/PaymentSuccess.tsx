@@ -90,7 +90,7 @@ export function PaymentSuccess({ paymentData, asset }: PaymentSuccessProps) {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500">
-              Powered by Canadian Crypto Pay
+              Powered by RailBit
             </p>
             <p className="text-xs text-gray-500 mt-1">
               FINTRAC registered MSB • Secure & Compliant

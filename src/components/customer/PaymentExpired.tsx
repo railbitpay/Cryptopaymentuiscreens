@@ -46,7 +46,7 @@ export function PaymentExpired({ onRetry }: PaymentExpiredProps) {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500">
-              Need help? Contact support@canadiancryptopay.ca
+              Need help? Contact support@railbit.com
             </p>
           </div>
         </div>

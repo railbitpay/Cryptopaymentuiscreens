@@ -1,4 +1,4 @@
-import { Store, Activity, Shield, Server, LogOut } from 'lucide-react';
+import { Store, Activity, Shield, Server, LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
 import type { AdminView } from './AdminBackOffice';
 
@@ -6,9 +6,10 @@ interface AdminSidebarProps {
   currentView: AdminView;
   onNavigate: (view: AdminView) => void;
   onLogout: () => void;
+  onNavigateToEntry?: () => void;
 }
 
-export function AdminSidebar({ currentView, onNavigate, onLogout }: AdminSidebarProps) {
+export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: AdminSidebarProps) {
   const menuItems = [
     { id: 'merchants' as AdminView, label: 'Merchants', icon: Store },
     { id: 'monitoring' as AdminView, label: 'Transaction Monitoring', icon: Activity },
@@ -18,17 +19,18 @@ export function AdminSidebar({ currentView, onNavigate, onLogout }: AdminSidebar
 
   return (
     <div className="w-64 bg-gray-900 text-white flex flex-col">
-      {/* Header */}
+      {/* Logo */}
       <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
-            <Shield className="w-6 h-6" />
+        <button
+          onClick={onNavigateToEntry}
+          className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <Wallet className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <h2 className="text-white">Admin Portal</h2>
-            <p className="text-xs text-gray-400">Compliance Officer</p>
-          </div>
-        </div>
+          <span className="text-white">RailBit</span>
+        </button>
+        <p className="text-xs text-gray-400 mt-2 ml-10">Admin Portal</p>
       </div>
 
       {/* Navigation */}

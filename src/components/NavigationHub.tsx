@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, Users, Settings, Shield, Code, Palette, CreditCard } from 'lucide-react';
+import { Home, ShoppingBag, Users, Settings, Shield, Code, CreditCard, Wallet } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import type { AppView } from '../App';
@@ -57,29 +57,40 @@ export function NavigationHub({ onNavigate }: NavigationHubProps) {
       view: 'api-docs' as AppView,
       features: ['Getting started', 'Authentication', 'Payments API', 'Webhooks', 'Error handling']
     },
-    {
-      title: 'Design System',
-      description: 'Complete UI component library',
-      icon: Palette,
-      color: 'pink',
-      view: 'design-system' as AppView,
-      features: ['Color palette', 'Buttons', 'Alerts', 'Badges', 'Form components', 'Cards']
-    }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl">🇨🇦</span>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Navigation Header */}
+      <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <button 
+              onClick={() => onNavigate('entry')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-gray-900 font-semibold">RailBit</span>
+            </button>
           </div>
-          <h1 className="text-gray-900 mb-3">Canadian Crypto Pay</h1>
-          <p className="text-gray-600 text-lg mb-2">Complete UI System & Platform</p>
-          <p className="text-sm text-gray-500">
-            Accept Bitcoin Lightning, Ethereum, and Solana payments • FINTRAC MSB Compliant
-          </p>
+        </div>
+      </nav>
+      
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🇨🇦</span>
+            </div>
+            <h1 className="text-gray-900 mb-3">RailBit</h1>
+            <p className="text-gray-600 text-lg mb-2">Complete UI System & Platform</p>
+            <p className="text-sm text-gray-500">
+              Accept Bitcoin Lightning, Ethereum, and Solana payments • FINTRAC MSB Compliant
+            </p>
+          </div>
         </div>
 
         {/* Navigation Cards */}

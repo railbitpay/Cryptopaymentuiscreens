@@ -7,9 +7,10 @@ interface DashboardSidebarProps {
   currentView: DashboardView;
   onNavigate: (view: DashboardView) => void;
   onLogout: () => void;
+  onNavigateToEntry?: () => void;
 }
 
-export function DashboardSidebar({ currentView, onNavigate, onLogout }: DashboardSidebarProps) {
+export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: DashboardSidebarProps) {
   const navItems = [
     { id: 'overview' as DashboardView, label: 'Overview', icon: Home },
     { id: 'payments' as DashboardView, label: 'Payments', icon: CreditCard },
@@ -25,12 +26,15 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout }: Dashboar
     <div className="w-64 bg-gray-900 text-white flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={onNavigateToEntry}
+          className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
+        >
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <Wallet className="w-5 h-5 text-white" />
           </div>
-          <span className="text-white">Canadian Crypto Pay</span>
-        </div>
+          <span className="text-white">RailBit</span>
+        </button>
       </div>
 
       {/* KYC Status Banner */}

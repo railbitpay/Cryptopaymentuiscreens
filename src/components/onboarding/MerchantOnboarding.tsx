@@ -5,14 +5,17 @@ import { KYCVerification } from './KYCVerification';
 import { SettlementPreferences } from './SettlementPreferences';
 import { OnboardingSuccess } from './OnboardingSuccess';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { PageHeader } from '../PageHeader';
+import type { AppView } from '../../App';
 
 interface MerchantOnboardingProps {
   onComplete: () => void;
+  onNavigate?: (view: AppView) => void;
 }
 
 export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
-export function MerchantOnboarding({ onComplete }: MerchantOnboardingProps) {
+export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardingProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1);
 
   const steps = [
@@ -38,9 +41,9 @@ export function MerchantOnboarding({ onComplete }: MerchantOnboardingProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
+      {onNavigate && <PageHeader onNavigate={onNavigate} title="Merchant Onboarding" />}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-gray-900 mb-8">Merchant Onboarding</h1>
           
           {/* Progress Steps */}
           <div className="flex items-center justify-between">

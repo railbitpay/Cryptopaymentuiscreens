@@ -142,7 +142,7 @@ export function SettingsView() {
             <Card className="p-6 bg-blue-50 border-blue-200">
               <h4 className="text-gray-900 mb-2">API Documentation</h4>
               <p className="text-sm text-gray-600 mb-4">
-                Learn how to integrate Canadian Crypto Pay into your application
+                Learn how to integrate RailBit into your application
               </p>
               <Button variant="outline">View API Docs</Button>
             </Card>

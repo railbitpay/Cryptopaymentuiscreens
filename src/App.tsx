@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { NavigationHub } from './components/NavigationHub';
+import { EntryPage } from './components/EntryPage';
 import { MarketingSite } from './components/marketing/MarketingSite';
 import { MerchantOnboarding } from './components/onboarding/MerchantOnboarding';
 import { MerchantDashboard } from './components/dashboard/MerchantDashboard';
 import { CustomerPayment } from './components/customer/CustomerPayment';
 import { AdminBackOffice } from './components/admin/AdminBackOffice';
 import { APIDocs } from './components/docs/APIDocs';
-import { DesignSystem } from './components/design-system/DesignSystem';
+import { LogoutPage } from './components/LogoutPage';
 
 export type AppView = 
+  | 'entry'
   | 'hub'
   | 'marketing' 
   | 'onboarding' 
@@ -16,10 +18,23 @@ export type AppView =
   | 'customer-payment'
   | 'admin'
   | 'api-docs'
-  | 'design-system';
+  | 'logout';
+
+export type Screen = 'dashboard' | 'send' | 'receive' | 'transactions';
+
+export interface Transaction {
+  id: string;
+  type: 'sent' | 'received';
+  amount: number;
+  currency: string;
+  date: Date;
+  status: 'pending' | 'completed';
+  sender?: string;
+  recipient?: string;
+}
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('hub');
+  const [currentView, setCurrentView] = useState<AppView>('entry');
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
   const handleCreatePayment = (id: string) => {
@@ -29,6 +44,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
+      {currentView === 'entry' && (
+        <EntryPage onNavigate={setCurrentView} />
+      )}
       {currentView === 'hub' && (
         <NavigationHub onNavigate={setCurrentView} />
       )}
@@ -36,13 +54,13 @@ export default function App() {
         <MarketingSite onNavigate={setCurrentView} />
       )}
       {currentView === 'onboarding' && (
-        <MerchantOnboarding onComplete={() => setCurrentView('dashboard')} />
+        <MerchantOnboarding onComplete={() => setCurrentView('dashboard')} onNavigate={setCurrentView} />
       )}
       {currentView === 'dashboard' && (
         <MerchantDashboard onNavigate={setCurrentView} />
       )}
       {currentView === 'customer-payment' && (
-        <CustomerPayment paymentId={paymentId} />
+        <CustomerPayment paymentId={paymentId} onNavigate={setCurrentView} />
       )}
       {currentView === 'admin' && (
         <AdminBackOffice onNavigate={setCurrentView} />
@@ -50,8 +68,8 @@ export default function App() {
       {currentView === 'api-docs' && (
         <APIDocs onNavigate={setCurrentView} />
       )}
-      {currentView === 'design-system' && (
-        <DesignSystem />
+      {currentView === 'logout' && (
+        <LogoutPage onNavigate={setCurrentView} />
       )}
     </div>
   );

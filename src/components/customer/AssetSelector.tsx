@@ -116,7 +116,7 @@ export function AssetSelector({ paymentData, onSelectAsset }: AssetSelectorProps
         <div className="mt-8 text-center">
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            <span>Secured by Canadian Crypto Pay</span>
+            <span>Secured by RailBit</span>
           </div>
           <p className="text-xs text-gray-500 mt-2">
             FINTRAC registered MSB • Compliant with Canadian regulations

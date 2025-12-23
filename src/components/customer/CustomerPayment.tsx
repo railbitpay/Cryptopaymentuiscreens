@@ -5,15 +5,18 @@ import { SolanaPayment } from './SolanaPayment';
 import { PaymentSuccess } from './PaymentSuccess';
 import { PaymentExpired } from './PaymentExpired';
 import { AssetSelector } from './AssetSelector';
+import { PageHeader } from '../PageHeader';
+import type { AppView } from '../../App';
 
 type CryptoAsset = 'BTC' | 'ETH' | 'SOL';
 type PaymentStep = 'select' | 'paying' | 'success' | 'expired' | 'failed';
 
 interface CustomerPaymentProps {
   paymentId: string | null;
+  onNavigate?: (view: AppView) => void;
 }
 
-export function CustomerPayment({ paymentId }: CustomerPaymentProps) {
+export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps) {
   const [selectedAsset, setSelectedAsset] = useState<CryptoAsset | null>(null);
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('select');
   const [countdown, setCountdown] = useState(900); // 15 minutes
@@ -57,46 +60,70 @@ export function CustomerPayment({ paymentId }: CustomerPaymentProps) {
   };
 
   if (paymentStep === 'success') {
-    return <PaymentSuccess paymentData={paymentData} asset={selectedAsset!} />;
+    return (
+      <>
+        {onNavigate && <PageHeader onNavigate={onNavigate} />}
+        <PaymentSuccess paymentData={paymentData} asset={selectedAsset!} />
+      </>
+    );
   }
 
   if (paymentStep === 'expired') {
-    return <PaymentExpired onRetry={handleReset} />;
+    return (
+      <>
+        {onNavigate && <PageHeader onNavigate={onNavigate} />}
+        <PaymentExpired onRetry={handleReset} />
+      </>
+    );
   }
 
   if (paymentStep === 'select') {
-    return <AssetSelector paymentData={paymentData} onSelectAsset={handleAssetSelect} />;
+    return (
+      <>
+        {onNavigate && <PageHeader onNavigate={onNavigate} />}
+        <AssetSelector paymentData={paymentData} onSelectAsset={handleAssetSelect} />
+      </>
+    );
   }
 
   if (paymentStep === 'paying') {
     if (selectedAsset === 'BTC') {
       return (
-        <LightningPayment
-          paymentData={paymentData}
-          countdown={countdown}
-          onPaymentDetected={handlePaymentDetected}
-          onCancel={handleReset}
-        />
+        <>
+          {onNavigate && <PageHeader onNavigate={onNavigate} />}
+          <LightningPayment
+            paymentData={paymentData}
+            countdown={countdown}
+            onPaymentDetected={handlePaymentDetected}
+            onCancel={handleReset}
+          />
+        </>
       );
     }
     if (selectedAsset === 'ETH') {
       return (
-        <EthereumPayment
-          paymentData={paymentData}
-          countdown={countdown}
-          onPaymentDetected={handlePaymentDetected}
-          onCancel={handleReset}
-        />
+        <>
+          {onNavigate && <PageHeader onNavigate={onNavigate} />}
+          <EthereumPayment
+            paymentData={paymentData}
+            countdown={countdown}
+            onPaymentDetected={handlePaymentDetected}
+            onCancel={handleReset}
+          />
+        </>
       );
     }
     if (selectedAsset === 'SOL') {
       return (
-        <SolanaPayment
-          paymentData={paymentData}
-          countdown={countdown}
-          onPaymentDetected={handlePaymentDetected}
-          onCancel={handleReset}
-        />
+        <>
+          {onNavigate && <PageHeader onNavigate={onNavigate} />}
+          <SolanaPayment
+            paymentData={paymentData}
+            countdown={countdown}
+            onPaymentDetected={handlePaymentDetected}
+            onCancel={handleReset}
+          />
+        </>
       );
     }
   }

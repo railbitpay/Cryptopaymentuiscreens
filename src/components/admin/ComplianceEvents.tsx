@@ -140,7 +140,7 @@ export function ComplianceEvents() {
             <div>
               <h4 className="text-gray-900 mb-2">FINTRAC Compliance</h4>
               <p className="text-sm text-gray-600 mb-4">
-                Canadian Crypto Pay is registered as a Money Services Business (MSB) with FINTRAC.
+                RailBit is registered as a Money Services Business (MSB) with FINTRAC.
                 All large transactions over $10,000 CAD are automatically reported as required by law.
               </p>
               <div className="flex gap-2">

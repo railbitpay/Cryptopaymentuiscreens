@@ -32,7 +32,8 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
       <DashboardSidebar 
         currentView={currentView}
         onNavigate={setCurrentView}
-        onLogout={() => onNavigate('marketing')}
+        onLogout={() => onNavigate('logout')}
+        onNavigateToEntry={() => onNavigate('entry')}
       />
       
       <main className="flex-1 overflow-y-auto">

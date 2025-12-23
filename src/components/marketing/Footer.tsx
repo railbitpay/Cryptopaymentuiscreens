@@ -11,12 +11,15 @@ export function Footer({ onNavigate }: FooterProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <button 
+              onClick={() => onNavigate('entry')}
+              className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Wallet className="w-5 h-5 text-white" />
               </div>
-              <span className="text-white">Canadian Crypto Pay</span>
-            </div>
+              <span className="text-white">RailBit</span>
+            </button>
             <p className="text-gray-400 text-sm">
               Accept crypto payments. Get CAD settlements. Built for Canadian businesses.
             </p>
@@ -56,7 +59,7 @@ export function Footer({ onNavigate }: FooterProps) {
         <div className="border-t border-gray-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-400 text-sm">
-              © 2025 Canadian Crypto Pay Inc. FINTRAC Registered MSB.
+              © 2025 RailBit Inc. FINTRAC Registered MSB.
             </p>
             <p className="text-gray-400 text-sm">
               Made in Canada 🍁

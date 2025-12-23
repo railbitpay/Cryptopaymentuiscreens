@@ -13,7 +13,7 @@ export function OnboardingSuccess({ onComplete }: OnboardingSuccessProps) {
         <CheckCircle2 className="w-10 h-10 text-green-600" />
       </div>
 
-      <h2 className="text-gray-900 mb-4">Welcome to Canadian Crypto Pay!</h2>
+      <h2 className="text-gray-900 mb-4">Welcome to RailBit!</h2>
       <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
         Your account is set up and ready to go. Start accepting crypto payments from customers across Canada.
       </p>

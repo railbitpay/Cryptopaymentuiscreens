@@ -26,21 +26,21 @@ export function APIDocs({ onNavigate }: APIDocsProps) {
       {/* Top Nav */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button 
+            onClick={() => onNavigate('entry')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
               <Code className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-gray-900">Canadian Crypto Pay API</h2>
+              <h2 className="text-gray-900">RailBit API</h2>
               <p className="text-xs text-gray-500">Developer Documentation</p>
             </div>
-          </div>
+          </button>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => onNavigate('dashboard')}>
               Dashboard
-            </Button>
-            <Button onClick={() => onNavigate('design-system')}>
-              Design System
             </Button>
           </div>
         </div>
@@ -89,14 +89,14 @@ function GettingStarted() {
       <div>
         <h1 className="text-gray-900 mb-2">Getting Started</h1>
         <p className="text-gray-600">
-          Welcome to the Canadian Crypto Pay API. Accept Bitcoin Lightning, Ethereum, and Solana payments in your application.
+          Welcome to the RailBit API. Accept Bitcoin Lightning, Ethereum, and Solana payments in your application.
         </p>
       </div>
 
       <Card className="p-6 bg-blue-50 border-blue-200">
         <h3 className="text-gray-900 mb-2">Base URL</h3>
         <code className="block bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">
-          https://api.canadiancryptopay.ca/v1
+          https://api.railbit.com/v1
         </code>
       </Card>
 
@@ -106,7 +106,7 @@ function GettingStarted() {
           <li className="flex gap-3">
             <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">1</span>
             <div>
-              <p className="text-gray-900">Create an account at canadiancryptopay.ca</p>
+              <p className="text-gray-900">Create an account at railbit.com</p>
               <p className="text-sm text-gray-600">Complete KYC verification to get approved</p>
             </div>
           </li>
@@ -190,7 +190,7 @@ function Authentication() {
           
           <TabsContent value="curl">
             <pre className="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm overflow-x-auto">
-{`curl https://api.canadiancryptopay.ca/v1/payments \\
+{`curl https://api.railbit.com/v1/payments \\
   -H "Authorization: Bearer pk_test_51234567890abcdef" \\
   -H "Content-Type: application/json"`}
             </pre>
@@ -201,7 +201,7 @@ function Authentication() {
 {`const axios = require('axios');
 
 const response = await axios.get(
-  'https://api.canadiancryptopay.ca/v1/payments',
+  'https://api.railbit.com/v1/payments',
   {
     headers: {
       'Authorization': 'Bearer pk_test_51234567890abcdef',
@@ -217,7 +217,7 @@ const response = await axios.get(
 {`import requests
 
 response = requests.get(
-    'https://api.canadiancryptopay.ca/v1/payments',
+    'https://api.railbit.com/v1/payments',
     headers={
         'Authorization': 'Bearer pk_test_51234567890abcdef',
         'Content-Type': 'application/json'
@@ -273,7 +273,7 @@ function PaymentsAPI() {
   "amount_cad": 45.50,
   "amount_crypto": 0.00068250,
   "asset": "BTC",
-  "payment_url": "https://pay.canadiancryptopay.ca/pay_abc123",
+  "payment_url": "https://pay.railbit.com/pay_abc123",
   "invoice": "lnbc4550n1p3xyz...",
   "expires_at": "2025-11-21T15:45:00Z",
   "created_at": "2025-11-21T15:30:00Z"
@@ -398,7 +398,7 @@ function WebhooksAPI() {
       <Card className="p-6">
         <h3 className="text-gray-900 mb-4">Verifying Webhooks</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Verify webhook signatures to ensure requests are from Canadian Crypto Pay.
+          Verify webhook signatures to ensure requests are from RailBit.
         </p>
         <pre className="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm overflow-x-auto">
 {`const crypto = require('crypto');
