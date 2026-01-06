@@ -12,7 +12,7 @@ export function Footer({ onNavigate }: FooterProps) {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <button 
-              onClick={() => onNavigate('entry')}
+              onClick={() => onNavigate('marketing')}
               className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer"
             >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">

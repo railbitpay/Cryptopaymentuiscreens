@@ -13,7 +13,7 @@ export function MarketingNav({ onNavigate }: MarketingNavProps) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
             <button 
-              onClick={() => onNavigate('entry')}
+              onClick={() => onNavigate('marketing')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
             >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -42,7 +42,7 @@ export function MarketingNav({ onNavigate }: MarketingNavProps) {
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost"
-              onClick={() => onNavigate('merchant-dashboard')}
+              onClick={() => onNavigate('dashboard')}
             >
               Login
             </Button>

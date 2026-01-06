@@ -36,25 +36,30 @@ export interface Transaction {
 
 export default function App() {
   const { isAuthenticated, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<AppView>('entry');
+  const [currentView, setCurrentView] = useState<AppView>('marketing');
   const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Check URL for payment ID (for customer payment links)
+  // Check URL for payment ID (for customer payment links) and handle initial redirect
   useEffect(() => {
+    if (hasInitialized) return; // Only run once on mount
+    
     const path = window.location.pathname;
     const paymentMatch = path.match(/\/payment\/([^/]+)/);
     if (paymentMatch) {
       setPaymentId(paymentMatch[1]);
       setCurrentView('customer-payment');
+      setHasInitialized(true);
+      return;
     }
-  }, []);
-
-  // Redirect authenticated users from entry page to dashboard
-  useEffect(() => {
-    if (!loading && isAuthenticated && currentView === 'entry') {
+    
+    // If authenticated on initial load, redirect to dashboard
+    if (!loading && isAuthenticated) {
       setCurrentView('dashboard');
     }
-  }, [isAuthenticated, loading, currentView]);
+    
+    setHasInitialized(true);
+  }, [isAuthenticated, loading, hasInitialized]);
 
   const handleCreatePayment = (id: string) => {
     setPaymentId(id);
