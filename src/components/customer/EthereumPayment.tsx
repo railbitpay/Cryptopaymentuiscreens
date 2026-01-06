@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Wallet, Copy, X, Clock, CheckCircle2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Payment } from '../../services/api';
 
 interface PaymentData {
   merchantName: string;
@@ -13,24 +15,23 @@ interface PaymentData {
 
 interface EthereumPaymentProps {
   paymentData: PaymentData;
+  payment: Payment;
   countdown: number;
   onPaymentDetected: () => void;
   onCancel: () => void;
 }
 
-export function EthereumPayment({ paymentData, countdown, onPaymentDetected, onCancel }: EthereumPaymentProps) {
-  const address = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
-  const ethAmount = (paymentData.amount * 0.00035).toFixed(6);
+export function EthereumPayment({ paymentData, payment, countdown, onPaymentDetected, onCancel }: EthereumPaymentProps) {
+  const address = payment.address;
+  const ethAmount = payment.crypto_amount.toFixed(6);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onPaymentDetected();
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [onPaymentDetected]);
+  // Payment detection is handled by polling in CustomerPayment component
 
   const handleCopy = () => {
     navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatTime = (seconds: number) => {
@@ -62,24 +63,13 @@ export function EthereumPayment({ paymentData, countdown, onPaymentDetected, onC
           <div className="grid md:grid-cols-2 gap-8">
             {/* QR Code */}
             <div>
-              <div className="bg-white border-2 border-gray-200 rounded-lg p-8 mb-4">
-                <svg viewBox="0 0 256 256" className="w-full h-full">
-                  <rect width="256" height="256" fill="white"/>
-                  <g fill="black">
-                    {Array.from({ length: 8 }).map((_, i) =>
-                      Array.from({ length: 8 }).map((_, j) => (
-                        <rect
-                          key={`${i}-${j}`}
-                          x={i * 32}
-                          y={j * 32}
-                          width="28"
-                          height="28"
-                          fill={(i + j) % 2 === 0 ? 'black' : 'white'}
-                        />
-                      ))
-                    )}
-                  </g>
-                </svg>
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-8 mb-4 flex items-center justify-center">
+                <QRCodeSVG 
+                  value={address}
+                  size={256}
+                  level="H"
+                  includeMargin={false}
+                />
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Scan with your Ethereum wallet</p>
@@ -110,7 +100,11 @@ export function EthereumPayment({ paymentData, countdown, onPaymentDetected, onC
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50"
                   />
                   <Button onClick={handleCopy} variant="outline">
-                    <Copy className="w-4 h-4" />
+                    {copied ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>

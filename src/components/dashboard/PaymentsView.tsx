@@ -1,15 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { Search, Filter, Download, ExternalLink } from 'lucide-react';
+import { Search, Filter, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { api, Payment } from '../../services/api';
 
 export function PaymentsView() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState('all');
 
-  const payments = [
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const data = await api.getPayments();
+        setPayments(data);
+      } catch (error) {
+        console.error('Failed to fetch payments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, []);
+
+  const filteredPayments = payments.filter((payment) => {
+    const matchesSearch = 
+      payment.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.address.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (selectedTab === 'all') return matchesSearch;
+    return matchesSearch && payment.asset === selectedTab;
+  });
+
+  const mockPayments = [
     {
       id: 'PAY-5678',
       asset: 'BTC Lightning',
@@ -86,10 +114,30 @@ export function PaymentsView() {
   };
 
   const getAssetColor = (asset: string) => {
-    if (asset.includes('BTC')) return 'text-orange-600 bg-orange-50';
-    if (asset.includes('ETH')) return 'text-purple-600 bg-purple-50';
-    if (asset.includes('SOL')) return 'text-green-600 bg-green-50';
+    if (asset === 'btc' || asset.includes('BTC')) return 'text-orange-600 bg-orange-50';
+    if (asset === 'eth' || asset.includes('ETH')) return 'text-purple-600 bg-purple-50';
+    if (asset === 'sol' || asset.includes('SOL')) return 'text-green-600 bg-green-50';
     return 'text-gray-600 bg-gray-50';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatAssetName = (asset: string) => {
+    const names: Record<string, string> = {
+      btc: 'BTC Lightning',
+      eth: 'ETH',
+      sol: 'SOL'
+    };
+    return names[asset] || asset.toUpperCase();
   };
 
   return (
@@ -125,7 +173,7 @@ export function PaymentsView() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="all">All Payments</TabsTrigger>
             <TabsTrigger value="btc">BTC Lightning</TabsTrigger>
@@ -133,7 +181,15 @@ export function PaymentsView() {
             <TabsTrigger value="sol">Solana</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : filteredPayments.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">No payments found</p>
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -148,30 +204,36 @@ export function PaymentsView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map((payment) => (
+                  {filteredPayments.map((payment) => (
                     <tr key={payment.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4">
-                        <span className="text-sm text-gray-900">{payment.id}</span>
+                        <span className="text-sm text-gray-900 font-mono">{payment.id.substring(0, 12)}...</span>
                       </td>
                       <td className="py-4 px-4">
                         <span className={`text-sm px-2 py-1 rounded ${getAssetColor(payment.asset)}`}>
-                          {payment.asset}
+                          {formatAssetName(payment.asset)}
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-sm text-gray-900">{payment.amount} {payment.asset.split(' ')[0]}</span>
+                        <span className="text-sm text-gray-900">
+                          {payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}
+                        </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-sm text-gray-900">{payment.cadValue}</span>
+                        <span className="text-sm text-gray-900">${payment.amount_cad.toFixed(2)} CAD</span>
                       </td>
                       <td className="py-4 px-4">
                         {getStatusBadge(payment.status)}
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-sm text-gray-600">{payment.date}</span>
+                        <span className="text-sm text-gray-600">{formatDate(payment.created_at)}</span>
                       </td>
                       <td className="py-4 px-4">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => window.open(`/payment/${payment.id}`, '_blank')}
+                        >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
                       </td>
@@ -180,27 +242,17 @@ export function PaymentsView() {
                 </tbody>
               </table>
             </div>
-          </TabsContent>
-
-          <TabsContent value="btc">
-            <p className="text-sm text-gray-600">BTC Lightning payments only</p>
-          </TabsContent>
-
-          <TabsContent value="eth">
-            <p className="text-sm text-gray-600">Ethereum payments only</p>
-          </TabsContent>
-
-          <TabsContent value="sol">
-            <p className="text-sm text-gray-600">Solana payments only</p>
-          </TabsContent>
+          )}
         </Tabs>
 
         {/* Pagination */}
         <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600">Showing 6 of 234 payments</p>
+          <p className="text-sm text-gray-600">
+            Showing {filteredPayments.length} of {payments.length} payments
+          </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
+            <Button variant="outline" size="sm" disabled>Next</Button>
           </div>
         </div>
       </Card>

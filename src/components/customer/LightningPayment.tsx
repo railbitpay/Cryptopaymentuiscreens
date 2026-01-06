@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Zap, Copy, X, CheckCircle2, Clock } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Payment } from '../../services/api';
 
 interface PaymentData {
   merchantName: string;
@@ -13,25 +15,24 @@ interface PaymentData {
 
 interface LightningPaymentProps {
   paymentData: PaymentData;
+  payment: Payment;
   countdown: number;
   onPaymentDetected: () => void;
   onCancel: () => void;
 }
 
-export function LightningPayment({ paymentData, countdown, onPaymentDetected, onCancel }: LightningPaymentProps) {
-  const invoice = 'lnbc4550n1p3xyzabc...'; // Mock invoice
-  const btcAmount = (paymentData.amount * 0.000015).toFixed(8);
+export function LightningPayment({ paymentData, payment, countdown, onPaymentDetected, onCancel }: LightningPaymentProps) {
+  const invoice = payment.address;
+  const btcAmount = payment.crypto_amount.toFixed(8);
+  const [copied, setCopied] = useState(false);
 
-  // Simulate payment detection
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onPaymentDetected();
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [onPaymentDetected]);
+  // Note: Payment detection is handled by polling in CustomerPayment component
+  // This component just displays the payment details
 
   const handleCopy = () => {
     navigator.clipboard.writeText(invoice);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatTime = (seconds: number) => {
@@ -63,25 +64,13 @@ export function LightningPayment({ paymentData, countdown, onPaymentDetected, on
           <div className="grid md:grid-cols-2 gap-8">
             {/* QR Code */}
             <div>
-              <div className="bg-white border-2 border-gray-200 rounded-lg p-8 mb-4">
-                {/* QR Code Placeholder */}
-                <svg viewBox="0 0 256 256" className="w-full h-full">
-                  <rect width="256" height="256" fill="white"/>
-                  <g fill="black">
-                    {Array.from({ length: 8 }).map((_, i) =>
-                      Array.from({ length: 8 }).map((_, j) => (
-                        <rect
-                          key={`${i}-${j}`}
-                          x={i * 32}
-                          y={j * 32}
-                          width="28"
-                          height="28"
-                          fill={(i + j) % 2 === 0 ? 'black' : 'white'}
-                        />
-                      ))
-                    )}
-                  </g>
-                </svg>
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-8 mb-4 flex items-center justify-center">
+                <QRCodeSVG 
+                  value={invoice}
+                  size={256}
+                  level="H"
+                  includeMargin={false}
+                />
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Scan with your Lightning wallet</p>
@@ -112,7 +101,11 @@ export function LightningPayment({ paymentData, countdown, onPaymentDetected, on
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50"
                   />
                   <Button onClick={handleCopy} variant="outline">
-                    <Copy className="w-4 h-4" />
+                    {copied ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>

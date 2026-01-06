@@ -6,7 +6,7 @@ import { Card } from '../ui/card';
 import { Mail, Lock, Smartphone } from 'lucide-react';
 
 interface CreateAccountProps {
-  onNext: () => void;
+  onNext: (data: { email: string; password: string }) => void;
 }
 
 export function CreateAccount({ onNext }: CreateAccountProps) {
@@ -14,10 +14,23 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [enable2FA, setEnable2FA] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onNext();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    onNext({ email, password });
   };
 
   return (
@@ -26,6 +39,12 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
         <h2 className="text-gray-900 mb-2">Create Your Account</h2>
         <p className="text-gray-600">Set up your merchant account credentials</p>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-900">{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">

@@ -6,10 +6,14 @@ import { PaymentSuccess } from './PaymentSuccess';
 import { PaymentExpired } from './PaymentExpired';
 import { AssetSelector } from './AssetSelector';
 import { PageHeader } from '../PageHeader';
+import { api, Payment } from '../../services/api';
 import type { AppView } from '../../App';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
+import { Card } from '../ui/card';
 
 type CryptoAsset = 'BTC' | 'ETH' | 'SOL';
-type PaymentStep = 'select' | 'paying' | 'success' | 'expired' | 'failed';
+type PaymentStep = 'select' | 'paying' | 'success' | 'expired' | 'failed' | 'loading' | 'error';
 
 interface CustomerPaymentProps {
   paymentId: string | null;
@@ -18,17 +22,73 @@ interface CustomerPaymentProps {
 
 export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps) {
   const [selectedAsset, setSelectedAsset] = useState<CryptoAsset | null>(null);
-  const [paymentStep, setPaymentStep] = useState<PaymentStep>('select');
-  const [countdown, setCountdown] = useState(900); // 15 minutes
+  const [paymentStep, setPaymentStep] = useState<PaymentStep>('loading');
+  const [countdown, setCountdown] = useState(900);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock payment data
-  const paymentData = {
-    merchantName: 'My Coffee Shop',
-    amount: 45.50,
-    currency: 'CAD',
-    description: 'Order #12345'
-  };
+  // Fetch payment data
+  useEffect(() => {
+    if (!paymentId) {
+      setError('No payment ID provided');
+      setPaymentStep('error');
+      return;
+    }
 
+    const fetchPayment = async () => {
+      try {
+        const paymentData = await api.getPayment(paymentId);
+        setPayment(paymentData);
+        
+        // Check if payment is already paid or expired
+        if (paymentData.status === 'paid') {
+          setPaymentStep('success');
+          // Determine asset from payment data
+          const assetMap: Record<string, CryptoAsset> = { btc: 'BTC', eth: 'ETH', sol: 'SOL' };
+          setSelectedAsset(assetMap[paymentData.asset] || 'BTC');
+        } else {
+          const expiresAt = new Date(paymentData.expires_at);
+          const now = new Date();
+          if (expiresAt < now) {
+            setPaymentStep('expired');
+          } else {
+            setPaymentStep('select');
+            // Set countdown
+            const diff = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+            setCountdown(diff);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load payment');
+        setPaymentStep('error');
+      }
+    };
+
+    fetchPayment();
+  }, [paymentId]);
+
+  // Poll payment status when in paying state
+  useEffect(() => {
+    if (paymentStep === 'paying' && paymentId) {
+      const pollInterval = setInterval(async () => {
+        try {
+          const paymentData = await api.getPayment(paymentId);
+          setPayment(paymentData);
+          
+          if (paymentData.status === 'paid') {
+            setPaymentStep('success');
+            clearInterval(pollInterval);
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      }, 3000); // Poll every 3 seconds
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [paymentStep, paymentId]);
+
+  // Countdown timer
   useEffect(() => {
     if (paymentStep === 'paying' && countdown > 0) {
       const timer = setInterval(() => {
@@ -49,14 +109,68 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
     setPaymentStep('paying');
   };
 
-  const handlePaymentDetected = () => {
-    setPaymentStep('success');
+  const handlePaymentDetected = async () => {
+    if (paymentId) {
+      try {
+        await api.verifyPayment(paymentId);
+        setPaymentStep('success');
+      } catch (err) {
+        console.error('Payment verification error:', err);
+      }
+    }
   };
 
   const handleReset = () => {
     setSelectedAsset(null);
     setPaymentStep('select');
-    setCountdown(900);
+    if (payment) {
+      const expiresAt = new Date(payment.expires_at);
+      const now = new Date();
+      const diff = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+      setCountdown(diff);
+    }
+  };
+
+  if (paymentStep === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading payment...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (paymentStep === 'error') {
+    return (
+      <>
+        {onNavigate && <PageHeader onNavigate={onNavigate} />}
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="p-8 max-w-md w-full">
+            <Alert className="border-red-200 bg-red-50 mb-4">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-900">
+                {error || 'Failed to load payment'}
+              </AlertDescription>
+            </Alert>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  if (!payment) {
+    return null;
+  }
+
+  const paymentData = {
+    merchantName: 'Merchant', // Could fetch merchant name from API
+    amount: payment.amount_cad,
+    currency: 'CAD',
+    description: payment.description || undefined
   };
 
   if (paymentStep === 'success') {
@@ -87,12 +201,17 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
   }
 
   if (paymentStep === 'paying') {
-    if (selectedAsset === 'BTC') {
+    // Map payment asset to component asset
+    const assetMap: Record<string, CryptoAsset> = { btc: 'BTC', eth: 'ETH', sol: 'SOL' };
+    const currentAsset = selectedAsset || assetMap[payment.asset] || 'BTC';
+
+    if (currentAsset === 'BTC') {
       return (
         <>
           {onNavigate && <PageHeader onNavigate={onNavigate} />}
           <LightningPayment
             paymentData={paymentData}
+            payment={payment}
             countdown={countdown}
             onPaymentDetected={handlePaymentDetected}
             onCancel={handleReset}
@@ -100,12 +219,13 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
         </>
       );
     }
-    if (selectedAsset === 'ETH') {
+    if (currentAsset === 'ETH') {
       return (
         <>
           {onNavigate && <PageHeader onNavigate={onNavigate} />}
           <EthereumPayment
             paymentData={paymentData}
+            payment={payment}
             countdown={countdown}
             onPaymentDetected={handlePaymentDetected}
             onCancel={handleReset}
@@ -113,12 +233,13 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
         </>
       );
     }
-    if (selectedAsset === 'SOL') {
+    if (currentAsset === 'SOL') {
       return (
         <>
           {onNavigate && <PageHeader onNavigate={onNavigate} />}
           <SolanaPayment
             paymentData={paymentData}
+            payment={payment}
             countdown={countdown}
             onPaymentDetected={handlePaymentDetected}
             onCancel={handleReset}

@@ -4,33 +4,70 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Bitcoin, Wallet, QrCode, Copy, Share2, CheckCircle2 } from 'lucide-react';
+import { Bitcoin, Wallet, QrCode, Copy, Share2, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { api, Payment } from '../../services/api';
+import { Alert, AlertDescription } from '../ui/alert';
 
 export function CreatePaymentView() {
   const [amount, setAmount] = useState('');
-  const [asset, setAsset] = useState('btc');
+  const [asset, setAsset] = useState<'btc' | 'eth' | 'sol'>('btc');
   const [description, setDescription] = useState('');
   const [paymentCreated, setPaymentCreated] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
 
-  const handleCreatePayment = (e: React.FormEvent) => {
+  const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPaymentCreated(true);
-  };
+    setLoading(true);
+    setError(null);
 
-  const paymentAddress = asset === 'btc' 
-    ? 'lnbc1500n1pn2s39kpp5wytkfzr7shyd8d7d2v5y9vr3z...'
-    : asset === 'eth'
-    ? '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0'
-    : 'SoLa9k3mPqRtXx7Wy6Bz4Nv8Hj5Fg2Kl1Ad3Bc7';
+    try {
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Please enter a valid amount');
+      }
+
+      const newPayment = await api.createPayment(amountNum, asset, description || undefined);
+      setPayment(newPayment);
+      setPaymentCreated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create payment');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(paymentAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (payment?.address) {
+      navigator.clipboard.writeText(payment.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  if (paymentCreated) {
+  const handleShare = () => {
+    if (payment?.payment_url) {
+      navigator.clipboard.writeText(payment.payment_url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const formatTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diff = Math.max(0, expires.getTime() - now.getTime());
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (paymentCreated && payment) {
+    const timeRemaining = formatTimeRemaining(payment.expires_at);
+    
     return (
       <div className="p-8 max-w-3xl mx-auto">
         <Card className="p-8">
@@ -44,28 +81,17 @@ export function CreatePaymentView() {
 
           {/* QR Code */}
           <div className="bg-white border-2 border-gray-200 rounded-xl p-8 mb-6">
-            <div className="w-64 h-64 mx-auto bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
-              <svg viewBox="0 0 256 256" className="w-full h-full p-4">
-                <rect width="256" height="256" fill="white"/>
-                <g fill="black">
-                  {Array.from({ length: 8 }).map((_, i) =>
-                    Array.from({ length: 8 }).map((_, j) => (
-                      <rect
-                        key={`${i}-${j}`}
-                        x={i * 32}
-                        y={j * 32}
-                        width="28"
-                        height="28"
-                        fill={(i + j) % 2 === 0 ? 'black' : 'white'}
-                      />
-                    ))
-                  )}
-                </g>
-              </svg>
+            <div className="w-64 h-64 mx-auto bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center p-4">
+              <QRCodeSVG 
+                value={payment.payment_url || `http://localhost:5173/payment/${payment.id}`}
+                size={256}
+                level="H"
+                includeMargin={false}
+              />
             </div>
             <div className="text-center mt-4">
-              <p className="text-2xl text-gray-900 mb-1">{amount} CAD</p>
-              <p className="text-sm text-gray-600">{description || 'No description'}</p>
+              <p className="text-2xl text-gray-900 mb-1">${payment.amount_cad.toFixed(2)} CAD</p>
+              <p className="text-sm text-gray-600">{payment.description || 'No description'}</p>
             </div>
           </div>
 
@@ -74,7 +100,7 @@ export function CreatePaymentView() {
             <div>
               <Label>Payment Address</Label>
               <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-900 break-all font-mono">{paymentAddress}</p>
+                <p className="text-sm text-gray-900 break-all font-mono">{payment.address}</p>
               </div>
             </div>
 
@@ -92,7 +118,7 @@ export function CreatePaymentView() {
                   </>
                 )}
               </Button>
-              <Button variant="outline">
+              <Button onClick={handleShare} variant="outline">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share Link
               </Button>
@@ -104,25 +130,34 @@ export function CreatePaymentView() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Payment ID</span>
-                <span className="text-gray-900">PAY-9876</span>
+                <span className="text-gray-900 font-mono text-xs">{payment.id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Asset</span>
-                <span className="text-gray-900">{asset.toUpperCase()}</span>
+                <span className="text-gray-900">{payment.asset.toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount</span>
-                <span className="text-gray-900">{amount} CAD</span>
+                <span className="text-gray-900">${payment.amount_cad.toFixed(2)} CAD</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Crypto Amount</span>
+                <span className="text-gray-900">{payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Expires</span>
-                <span className="text-gray-900">15:00 remaining</span>
+                <span className="text-gray-900">{timeRemaining} remaining</span>
               </div>
             </div>
           </Card>
 
           <Button
-            onClick={() => setPaymentCreated(false)}
+            onClick={() => {
+              setPaymentCreated(false);
+              setPayment(null);
+              setAmount('');
+              setDescription('');
+            }}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             Create Another Payment
@@ -138,6 +173,13 @@ export function CreatePaymentView() {
         <h1 className="text-gray-900 mb-2">Create Payment</h1>
         <p className="text-gray-600">Generate a new crypto payment request</p>
       </div>
+
+      {error && (
+        <Alert className="mb-6 border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-900">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="p-8">
         <form onSubmit={handleCreatePayment} className="space-y-6">
@@ -221,10 +263,19 @@ export function CreatePaymentView() {
           <Button
             type="submit"
             className="w-full h-12 bg-blue-600 hover:bg-blue-700"
-            disabled={!amount}
+            disabled={!amount || loading}
           >
-            <QrCode className="w-5 h-5 mr-2" />
-            Generate Payment Request
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <QrCode className="w-5 h-5 mr-2" />
+                Generate Payment Request
+              </>
+            )}
           </Button>
         </form>
       </Card>

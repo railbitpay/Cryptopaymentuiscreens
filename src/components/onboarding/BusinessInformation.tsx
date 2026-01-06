@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Building2 } from 'lucide-react';
 
 interface BusinessInformationProps {
-  onNext: () => void;
+  onNext: (data: { businessName: string }) => void;
   onBack: () => void;
 }
 
@@ -22,7 +22,9 @@ export function BusinessInformation({ onNext, onBack }: BusinessInformationProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onNext();
+    if (businessName) {
+      onNext({ businessName });
+    }
   };
 
   const provinces = [

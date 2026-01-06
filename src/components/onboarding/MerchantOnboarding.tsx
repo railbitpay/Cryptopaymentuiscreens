@@ -6,6 +6,7 @@ import { SettlementPreferences } from './SettlementPreferences';
 import { OnboardingSuccess } from './OnboardingSuccess';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { PageHeader } from '../PageHeader';
+import { useAuth } from '../../contexts/AuthContext';
 import type { AppView } from '../../App';
 
 interface MerchantOnboardingProps {
@@ -16,7 +17,13 @@ interface MerchantOnboardingProps {
 export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
 export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardingProps) {
+  const { register } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1);
+  const [onboardingData, setOnboardingData] = useState<{
+    email?: string;
+    password?: string;
+    businessName?: string;
+  }>({});
 
   const steps = [
     { id: 1, title: 'Create Account', description: 'Basic account setup' },
@@ -26,8 +33,21 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     { id: 5, title: 'Complete', description: 'Ready to go' }
   ];
 
-  const handleNext = () => {
-    if (currentStep < 5) {
+  const handleNext = async (data?: { email?: string; password?: string; businessName?: string }) => {
+    if (data) {
+      setOnboardingData(prev => ({ ...prev, ...data }));
+    }
+
+    // Register after step 2 (when we have email, password, and business name)
+    if (currentStep === 2 && onboardingData.email && onboardingData.password && data?.businessName) {
+      try {
+        await register(onboardingData.email, onboardingData.password, data.businessName);
+        setCurrentStep(3);
+      } catch (error) {
+        console.error('Registration failed:', error);
+        // Could show error message here
+      }
+    } else if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as OnboardingStep);
     }
   };
@@ -89,8 +109,17 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {currentStep === 1 && <CreateAccount onNext={handleNext} />}
-        {currentStep === 2 && <BusinessInformation onNext={handleNext} onBack={handleBack} />}
+        {currentStep === 1 && (
+          <CreateAccount 
+            onNext={(data) => handleNext(data)} 
+          />
+        )}
+        {currentStep === 2 && (
+          <BusinessInformation 
+            onNext={(data) => handleNext(data)} 
+            onBack={handleBack} 
+          />
+        )}
         {currentStep === 3 && <KYCVerification onNext={handleNext} onBack={handleBack} />}
         {currentStep === 4 && <SettlementPreferences onNext={handleNext} onBack={handleBack} />}
         {currentStep === 5 && <OnboardingSuccess onComplete={onComplete} />}

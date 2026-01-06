@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, Bitcoin, Wallet, ArrowRight, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Bitcoin, Wallet, ArrowRight, AlertTriangle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
+import { api, Payment, DashboardStats } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import type { DashboardView } from './MerchantDashboard';
 
 interface DashboardOverviewProps {
@@ -10,75 +13,94 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
-  const stats = [
+  const { user, isAuthenticated } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Only fetch if authenticated
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        const [statsData, paymentsData] = await Promise.all([
+          api.getDashboardStats(),
+          api.getPayments()
+        ]);
+        setStats(statsData);
+        setRecentPayments(paymentsData.slice(0, 4));
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // If auth fails, clear user
+        if (error instanceof Error && error.message.includes('401')) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('merchant_data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isAuthenticated]);
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${diffDays} days ago`;
+  };
+
+  const formatAssetAmount = (payment: Payment) => {
+    return `${payment.crypto_amount.toFixed(8)} ${payment.asset.toUpperCase()}`;
+  };
+
+  const displayStats = stats ? [
     {
       label: 'Total Volume (CAD)',
-      value: '$45,230.50',
-      change: '+12.5%',
+      value: `$${stats.total_volume.toFixed(2)}`,
+      change: stats.paid_volume > 0 ? `${((stats.paid_volume / stats.total_volume) * 100).toFixed(1)}% paid` : '0%',
       trend: 'up' as const,
       icon: DollarSign,
       color: 'green'
     },
     {
       label: 'Transactions (30d)',
-      value: '234',
-      change: '+8.2%',
+      value: stats.transaction_count.toString(),
+      change: `${stats.paid_count} completed`,
       trend: 'up' as const,
       icon: Bitcoin,
       color: 'blue'
     },
     {
       label: 'Crypto Balance',
-      value: '2.45 BTC',
-      change: '$120,450 CAD',
+      value: stats.balances.length > 0 
+        ? `${stats.balances[0].balance.toFixed(4)} ${stats.balances[0].asset.toUpperCase()}`
+        : '0.0000',
+      change: `$${stats.paid_volume.toFixed(2)} CAD`,
       trend: 'up' as const,
       icon: Wallet,
       color: 'orange'
     },
     {
-      label: 'Pending Payouts',
-      value: '$8,500',
-      change: 'Next: Dec 25',
+      label: 'Pending Payments',
+      value: stats.pending_count.toString(),
+      change: `${stats.paid_count} completed`,
       trend: 'up' as const,
       icon: TrendingUp,
       color: 'purple'
     }
-  ];
-
-  const recentPayments = [
-    {
-      id: 'PAY-1234',
-      amount: '0.025 BTC',
-      cadValue: '$1,450',
-      status: 'paid' as const,
-      date: '2 hours ago',
-      customer: 'bc1q...7x8y'
-    },
-    {
-      id: 'PAY-1233',
-      amount: '2.5 ETH',
-      cadValue: '$5,200',
-      status: 'paid' as const,
-      date: '5 hours ago',
-      customer: '0x...4f2e'
-    },
-    {
-      id: 'PAY-1232',
-      amount: '100 SOL',
-      cadValue: '$12,500',
-      status: 'pending' as const,
-      date: '1 day ago',
-      customer: 'Soła...9k3m'
-    },
-    {
-      id: 'PAY-1231',
-      amount: '0.05 BTC',
-      cadValue: '$2,900',
-      status: 'paid' as const,
-      date: '1 day ago',
-      customer: 'bc1q...2a3b'
-    }
-  ];
+  ] : [];
 
   return (
     <div className="p-8 max-w-7xl">
@@ -87,20 +109,28 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
         <p className="text-gray-600">Welcome back! Here's what's happening with your account.</p>
       </div>
 
-      {/* KYC Warning */}
-      <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-900">
-          <strong>KYC verification pending.</strong> Some features are limited until your account is approved. 
-          <Button variant="link" className="h-auto p-0 ml-1 text-yellow-900 underline" onClick={() => onNavigate('compliance')}>
-            View status
-          </Button>
-        </AlertDescription>
-      </Alert>
+      {/* KYC Warning - only show if user exists and KYC is pending */}
+      {user && user.kyc_status === 'pending' && (
+        <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-900">
+            <strong>KYC verification pending.</strong> Some features are limited until your account is approved. 
+            <Button variant="link" className="h-auto p-0 ml-1 text-yellow-900 underline" onClick={() => onNavigate('compliance')}>
+              View status
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => {
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      ) : (
+        <>
+          {/* Stats Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {displayStats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <Card key={index} className="p-6">
@@ -148,27 +178,33 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
               </Button>
             </div>
             <div className="space-y-3">
-              {recentPayments.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-900">{payment.id}</span>
-                      <Badge className={
-                        payment.status === 'paid'
-                          ? 'bg-green-100 text-green-800 border-green-200'
-                          : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                      }>
-                        {payment.status.toUpperCase()}
-                      </Badge>
+              {recentPayments.length === 0 ? (
+                <p className="text-sm text-gray-600 text-center py-8">No payments yet</p>
+              ) : (
+                recentPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm text-gray-900 font-mono">{payment.id.substring(0, 12)}...</span>
+                        <Badge className={
+                          payment.status === 'paid'
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : payment.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }>
+                          {payment.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500">{payment.address.substring(0, 20)}... • {formatTimeAgo(payment.created_at)}</p>
                     </div>
-                    <p className="text-xs text-gray-500">{payment.customer} • {payment.date}</p>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-900">{formatAssetAmount(payment)}</p>
+                      <p className="text-xs text-gray-500">${payment.amount_cad.toFixed(2)} CAD</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-900">{payment.amount}</p>
-                    <p className="text-xs text-gray-500">{payment.cadValue} CAD</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
@@ -212,6 +248,8 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
