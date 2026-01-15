@@ -179,6 +179,11 @@ initializeDatabase();
 // JWT Secret (in production, use environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || 'railbit-secret-key-change-in-production';
 
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.status(200).send("Railbit API is running ✅");
+});
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
