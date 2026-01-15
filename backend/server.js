@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
+import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Server } from 'socket.io';
@@ -13,67 +14,167 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
+// CORS configuration - use environment variable for production
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: frontendUrl,
     methods: ["GET", "POST"]
   }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: frontendUrl,
+  credentials: true
+}));
 app.use(express.json());
 
-// Database setup
-const dbPath = join(__dirname, 'railbit.db');
-const db = new sqlite3.Database(dbPath);
+// Database setup - Use PostgreSQL in production, SQLite in development
+const usePostgreSQL = process.env.DATABASE_URL && process.env.NODE_ENV === 'production';
+let db, pool;
 
-// Initialize database
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS merchants (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    business_name TEXT,
-    kyc_status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+if (usePostgreSQL) {
+  // PostgreSQL setup for production
+  const { Pool } = pg;
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
 
-  db.run(`CREATE TABLE IF NOT EXISTS payments (
-    id TEXT PRIMARY KEY,
-    merchant_id TEXT NOT NULL,
-    amount_cad REAL NOT NULL,
-    asset TEXT NOT NULL,
-    crypto_amount REAL NOT NULL,
-    address TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
-    description TEXT,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (merchant_id) REFERENCES merchants(id)
-  )`);
+  pool.on('connect', () => {
+    console.log('✅ Connected to PostgreSQL database');
+  });
 
-  db.run(`CREATE TABLE IF NOT EXISTS transactions (
-    id TEXT PRIMARY KEY,
-    payment_id TEXT,
-    merchant_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    amount REAL NOT NULL,
-    asset TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (payment_id) REFERENCES payments(id),
-    FOREIGN KEY (merchant_id) REFERENCES merchants(id)
-  )`);
+  pool.on('error', (err) => {
+    console.error('❌ PostgreSQL error:', err);
+  });
+} else {
+  // SQLite setup for development
+  const dbPath = join(__dirname, 'railbit.db');
+  db = new sqlite3.Database(dbPath);
+  console.log('✅ Using SQLite database for development');
+}
 
-  db.run(`CREATE TABLE IF NOT EXISTS api_keys (
-    id TEXT PRIMARY KEY,
-    merchant_id TEXT NOT NULL,
-    key_type TEXT DEFAULT 'test',
-    key_value TEXT UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (merchant_id) REFERENCES merchants(id)
-  )`);
-});
+// Initialize database tables
+const initializeDatabase = async () => {
+  if (usePostgreSQL) {
+    // PostgreSQL table creation
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS merchants (
+          id VARCHAR(255) PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          business_name VARCHAR(255),
+          kyc_status VARCHAR(50) DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id VARCHAR(255) PRIMARY KEY,
+          merchant_id VARCHAR(255) NOT NULL,
+          amount_cad DECIMAL(10, 2) NOT NULL,
+          asset VARCHAR(10) NOT NULL,
+          crypto_amount DECIMAL(20, 8) NOT NULL,
+          address TEXT NOT NULL,
+          status VARCHAR(50) DEFAULT 'pending',
+          description TEXT,
+          expires_at TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS transactions (
+          id VARCHAR(255) PRIMARY KEY,
+          payment_id VARCHAR(255),
+          merchant_id VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          amount DECIMAL(10, 2) NOT NULL,
+          asset VARCHAR(10) NOT NULL,
+          status VARCHAR(50) DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (payment_id) REFERENCES payments(id),
+          FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_keys (
+          id VARCHAR(255) PRIMARY KEY,
+          merchant_id VARCHAR(255) NOT NULL,
+          key_type VARCHAR(50) DEFAULT 'test',
+          key_value VARCHAR(255) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+        )
+      `);
+
+      console.log('✅ PostgreSQL tables initialized');
+    } catch (error) {
+      console.error('❌ PostgreSQL initialization error:', error);
+    }
+  } else {
+    // SQLite table creation
+    db.serialize(() => {
+      db.run(`CREATE TABLE IF NOT EXISTS merchants (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        business_name TEXT,
+        kyc_status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+
+      db.run(`CREATE TABLE IF NOT EXISTS payments (
+        id TEXT PRIMARY KEY,
+        merchant_id TEXT NOT NULL,
+        amount_cad REAL NOT NULL,
+        asset TEXT NOT NULL,
+        crypto_amount REAL NOT NULL,
+        address TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        description TEXT,
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+      )`);
+
+      db.run(`CREATE TABLE IF NOT EXISTS transactions (
+        id TEXT PRIMARY KEY,
+        payment_id TEXT,
+        merchant_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        asset TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (payment_id) REFERENCES payments(id),
+        FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+      )`);
+
+      db.run(`CREATE TABLE IF NOT EXISTS api_keys (
+        id TEXT PRIMARY KEY,
+        merchant_id TEXT NOT NULL,
+        key_type TEXT DEFAULT 'test',
+        key_value TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (merchant_id) REFERENCES merchants(id)
+      )`);
+    });
+    console.log('✅ SQLite tables initialized');
+  }
+};
+
+// Initialize database on startup
+initializeDatabase();
 
 // JWT Secret (in production, use environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || 'railbit-secret-key-change-in-production';
@@ -96,32 +197,76 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Helper function to promisify db operations
-const dbGet = (query, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.get(query, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
+// Helper function to convert SQLite-style queries (?) to PostgreSQL-style ($1, $2, ...)
+const convertQuery = (query) => {
+  if (!usePostgreSQL) return query;
+  
+  let paramIndex = 1;
+  return query.replace(/\?/g, () => `$${paramIndex++}`);
 };
 
-const dbAll = (query, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
+// Helper functions for database operations - supports both SQLite and PostgreSQL
+const dbGet = async (query, params = []) => {
+  const finalQuery = convertQuery(query);
+  
+  if (usePostgreSQL) {
+    try {
+      const result = await pool.query(finalQuery, params);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('PostgreSQL query error:', error);
+      throw error;
+    }
+  } else {
+    return new Promise((resolve, reject) => {
+      db.get(query, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
     });
-  });
+  }
 };
 
-const dbRun = (query, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(query, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
+const dbAll = async (query, params = []) => {
+  const finalQuery = convertQuery(query);
+  
+  if (usePostgreSQL) {
+    try {
+      const result = await pool.query(finalQuery, params);
+      return result.rows;
+    } catch (error) {
+      console.error('PostgreSQL query error:', error);
+      throw error;
+    }
+  } else {
+    return new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
     });
-  });
+  }
+};
+
+const dbRun = async (query, params = []) => {
+  const finalQuery = convertQuery(query);
+  
+  if (usePostgreSQL) {
+    try {
+      const result = await pool.query(finalQuery, params);
+      return { lastID: null, changes: result.rowCount };
+    } catch (error) {
+      console.error('PostgreSQL query error:', error);
+      throw error;
+    }
+  } else {
+    return new Promise((resolve, reject) => {
+      db.run(query, params, function(err) {
+        if (err) reject(err);
+        else resolve({ lastID: this.lastID, changes: this.changes });
+      });
+    });
+  }
 };
 
 // ==================== AUTH ROUTES ====================
@@ -337,6 +482,11 @@ app.post('/api/payments/:id/verify', async (req, res) => {
 
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
+    // Use appropriate date function for database type
+    const dateFilter = usePostgreSQL 
+      ? "created_at > NOW() - INTERVAL '30 days'"
+      : "created_at > datetime('now', '-30 days')";
+    
     const stats = await dbGet(`
       SELECT 
         COALESCE(SUM(amount_cad), 0) as total_volume,
@@ -345,7 +495,7 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
         COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_count,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count
       FROM payments 
-      WHERE merchant_id = ? AND created_at > datetime('now', '-30 days')
+      WHERE merchant_id = ? AND ${dateFilter}
     `, [req.user.id]);
 
     // Get crypto balances (mock for now)
@@ -404,20 +554,27 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
-  console.log(`🚀 RailBit Backend Server running on http://localhost:${PORT}`);
-  console.log(`📊 Database: ${dbPath}`);
+  console.log(`🚀 RailBit Backend Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Frontend URL: ${frontendUrl}`);
+  console.log(`💾 Database: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'}`);
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down server...');
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing database:', err);
-    } else {
-      console.log('✅ Database closed');
-    }
-    process.exit(0);
-  });
+  if (usePostgreSQL) {
+    await pool.end();
+    console.log('✅ PostgreSQL connection closed');
+  } else {
+    db.close((err) => {
+      if (err) {
+        console.error('Error closing database:', err);
+      } else {
+        console.log('✅ SQLite database closed');
+      }
+    });
+  }
+  process.exit(0);
 });
 

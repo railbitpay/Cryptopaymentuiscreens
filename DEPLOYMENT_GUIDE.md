@@ -2,35 +2,35 @@
 
 This guide walks you through deploying your RailBit application to production on your GoDaddy domain.
 
-## Overview
+ Overview
 
 You'll need to deploy:
 1. **Frontend** (React/Vite) - Static site hosting
 2. **Backend** (Node.js/Express) - Server hosting
 3. **Database** (SQLite → PostgreSQL for production)
 
-## Recommended Hosting Options
+ Recommended Hosting Options
 
-### Option 1: Vercel + Railway (Easiest & Free Tier Available)
-- **Frontend**: Vercel (free, excellent for React)
-- **Backend**: Railway (free tier, easy setup)
-- **Database**: Railway PostgreSQL (included)
+Option 1: Vercel + Railway (Easiest & Free Tier Available)
+- Frontend: Vercel (free, excellent for React)
+- Backend: Railway (free tier, easy setup)
+- Database: Railway PostgreSQL (included)
 
-### Option 2: Netlify + Render
-- **Frontend**: Netlify (free tier)
-- **Backend**: Render (free tier available)
-- **Database**: Render PostgreSQL
+ Option 2: Netlify + Render
+- Frontend: Netlify (free tier)
+- Backend: Render (free tier available)
+- Database: Render PostgreSQL
 
-### Option 3: AWS/Azure/GCP (More Complex, More Control)
+ Option 3: AWS/Azure/GCP (More Complex, More Control)
 - Full control but requires more setup
 
 ---
 
-## Step-by-Step: Vercel + Railway Setup
+ Step-by-Step: Vercel + Railway Setup
 
-### Part 1: Prepare Your Code
+ Part 1: Prepare Your Code
 
-#### 1. Update Environment Variables
+ 1. Update Environment Variables
 
 Create `.env.production` in the root:
 ```env
@@ -403,4 +403,5 @@ Common issues and solutions are documented above. For platform-specific help:
 - **Vercel Docs**: https://vercel.com/docs
 - **Railway Docs**: https://docs.railway.app
 - **GoDaddy DNS Help**: https://www.godaddy.com/help
+
 
