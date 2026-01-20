@@ -104,7 +104,7 @@
 1. **Wait for DNS propagation** (check with https://dnschecker.org)
 2. **Test your sites**:
    - https://railbit.io (should show marketing page)
-   - https://api.railbit.io/api/auth/me (should return 401, not 404)
+   - https://api.railbit.io/api/auth/me (should return 401,not 404)
 
 ---
 
@@ -172,5 +172,6 @@ VITE_API_BASE=https://api.railbit.io/api
 - Railway Docs: https://docs.railway.app
 - Vercel Docs: https://vercel.com/docs
 - Full guide: See `DEPLOYMENT_GUIDE.md`
+
 
 

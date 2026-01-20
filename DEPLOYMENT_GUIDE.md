@@ -125,35 +125,35 @@ In `backend/package.json`, add:
 
 ---
 
-### Part 3: Deploy Frontend to Vercel
+ Part 3: Deploy Frontend to Vercel
 
-1. **Sign up at Vercel** (https://vercel.com)
+1. Sign up at Vercel (https://vercel.com)
    - Use GitHub to sign in
 
-2. **Import Project**
+2. Import Project
    - Click "Add New" → "Project"
    - Import your GitHub repository
-   - Framework Preset: **Vite**
+   - Framework Preset: Vite
    - Root Directory: `/` (root of repo)
 
-3. **Configure Build Settings**
+3. Configure Build Settings
    - Build Command: `npm run build`
    - Output Directory: `dist`
    - Install Command: `npm install`
 
-4. **Set Environment Variables**
+4. Set Environment Variables
    - In project settings → "Environment Variables"
    - Add:
      ```
      VITE_API_BASE=https://api.railbit.io/api
      ```
 
-5. **Add Custom Domain**
+5. Add Custom Domain
    - In project settings → "Domains"
    - Add: `railbit.io` and `www.railbit.io`
    - Vercel will provide DNS records
 
-6. **Deploy**
+6. Deploy
    - Click "Deploy"
    - Vercel will build and deploy automatically
 
@@ -403,5 +403,6 @@ Common issues and solutions are documented above. For platform-specific help:
 - **Vercel Docs**: https://vercel.com/docs
 - **Railway Docs**: https://docs.railway.app
 - **GoDaddy DNS Help**: https://www.godaddy.com/help
+
 
 

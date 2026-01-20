@@ -278,3 +278,4 @@ connection.onAccountChange(depositAddress, (accountInfo) => {
 The QR code generation itself is working correctly - we're just using mock data instead of real blockchain addresses/invoices!
 
 
+
