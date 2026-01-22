@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { NavigationHub } from './components/NavigationHub';
-import { MarketingSite } from './components/marketing/MarketingSite';
-import { MerchantOnboarding } from './components/onboarding/MerchantOnboarding';
-import { MerchantDashboard } from './components/dashboard/MerchantDashboard';
-import { CustomerPayment } from './components/customer/CustomerPayment';
-import { AdminBackOffice } from './components/admin/AdminBackOffice';
-import { APIDocs } from './components/docs/APIDocs';
-import { LogoutPage } from './components/LogoutPage';
+import { useState, useEffect, lazy, Suspense } from 'react';
+const NavigationHub = lazy(() => import('./components/NavigationHub').then(m => ({ default: m.NavigationHub })));
+const MarketingSite = lazy(() => import('./components/marketing/MarketingSite').then(m => ({ default: m.MarketingSite })));
+const MerchantOnboarding = lazy(() => import('./components/onboarding/MerchantOnboarding').then(m => ({ default: m.MerchantOnboarding })));
+const MerchantDashboard = lazy(() => import('./components/dashboard/MerchantDashboard').then(m => ({ default: m.MerchantDashboard })));
+const CustomerPayment = lazy(() => import('./components/customer/CustomerPayment').then(m => ({ default: m.CustomerPayment })));
+const AdminBackOffice = lazy(() => import('./components/admin/AdminBackOffice').then(m => ({ default: m.AdminBackOffice })));
+const APIDocs = lazy(() => import('./components/docs/APIDocs').then(m => ({ default: m.APIDocs })));
+const LogoutPage = lazy(() => import('./components/LogoutPage').then(m => ({ default: m.LogoutPage })));
 import { useAuth } from './contexts/AuthContext';
 
 export type AppView = 
@@ -74,30 +74,41 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {currentView === 'hub' && (
-        <NavigationHub onNavigate={setCurrentView} />
-      )}
-      {currentView === 'marketing' && (
-        <MarketingSite onNavigate={setCurrentView} />
-      )}
-      {currentView === 'onboarding' && (
-        <MerchantOnboarding onComplete={() => setCurrentView('dashboard')} onNavigate={setCurrentView} />
-      )}
-      {currentView === 'dashboard' && (
-        <MerchantDashboard onNavigate={setCurrentView} />
-      )}
-      {currentView === 'customer-payment' && (
-        <CustomerPayment paymentId={paymentId} onNavigate={setCurrentView} />
-      )}
-      {currentView === 'admin' && (
-        <AdminBackOffice onNavigate={setCurrentView} />
-      )}
-      {currentView === 'api-docs' && (
-        <APIDocs onNavigate={setCurrentView} />
-      )}
-      {currentView === 'logout' && (
-        <LogoutPage onNavigate={setCurrentView} />
-      )}
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        }
+      >
+        {currentView === 'hub' && (
+          <NavigationHub onNavigate={setCurrentView} />
+        )}
+        {currentView === 'marketing' && (
+          <MarketingSite onNavigate={setCurrentView} />
+        )}
+        {currentView === 'onboarding' && (
+          <MerchantOnboarding onComplete={() => setCurrentView('dashboard')} onNavigate={setCurrentView} />
+        )}
+        {currentView === 'dashboard' && (
+          <MerchantDashboard onNavigate={setCurrentView} />
+        )}
+        {currentView === 'customer-payment' && (
+          <CustomerPayment paymentId={paymentId} onNavigate={setCurrentView} />
+        )}
+        {currentView === 'admin' && (
+          <AdminBackOffice onNavigate={setCurrentView} />
+        )}
+        {currentView === 'api-docs' && (
+          <APIDocs onNavigate={setCurrentView} />
+        )}
+        {currentView === 'logout' && (
+          <LogoutPage onNavigate={setCurrentView} />
+        )}
+      </Suspense>
     </div>
   );
 }
