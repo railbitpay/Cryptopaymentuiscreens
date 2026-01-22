@@ -593,8 +593,8 @@ app.post('/api/auth/register', async (req, res) => {
         address_line1, city, province, postal_code,
         settlement_mode, settlement_assets, bank_name, bank_transit, bank_institution, bank_account,
         two_factor_enabled, notif_payment_received, notif_payment_failed, notif_weekly_summary,
-        notif_compliance_alerts, notif_marketing_updates
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        notif_compliance_alerts, notif_marketing_updates, is_admin, kyc_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         email,
@@ -618,7 +618,9 @@ app.post('/api/auth/register', async (req, res) => {
         notifDefaults.payment_failed ? 1 : 0,
         notifDefaults.weekly_summary ? 1 : 0,
         notifDefaults.compliance_alerts ? 1 : 0,
-        notifDefaults.marketing_updates ? 1 : 0
+        notifDefaults.marketing_updates ? 1 : 0,
+        0, // is_admin (default to false)
+        'pending' // kyc_status (default to pending)
       ]
     );
 
