@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardOverview } from './DashboardOverview';
 import { PaymentsView } from './PaymentsView';
@@ -8,6 +8,13 @@ import { AssetsView } from './AssetsView';
 import { PayoutsView } from './PayoutsView';
 import { ComplianceLogsView } from './ComplianceLogsView';
 import { SettingsView } from './SettingsView';
+import { useAuth } from '../../contexts/AuthContext';
+import { Card } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Alert, AlertDescription } from '../ui/alert';
+import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import type { AppView } from '../../App';
 
 interface MerchantDashboardProps {
@@ -25,7 +32,116 @@ export type DashboardView =
   | 'settings';
 
 export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
+  const { isAuthenticated, loading, login } = useAuth();
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Redirect to marketing if not authenticated (after loading)
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      // Don't auto-redirect, show login form instead
+    }
+  }, [isAuthenticated, loading]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoginLoading(true);
+
+    try {
+      await login(email, password);
+      setEmail('');
+      setPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Show login form if not authenticated
+  if (!loading && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h1>
+            <p className="text-gray-600">Please log in to access your merchant dashboard</p>
+          </div>
+
+          {error && (
+            <Alert className="mb-4 border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-900">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@business.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loginLoading}>
+              {loginLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Login
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto" 
+                onClick={() => onNavigate('onboarding')}
+              >
+                Sign Up
+              </Button>
+            </p>
+            <Button 
+              variant="ghost" 
+              className="mt-4"
+              onClick={() => onNavigate('marketing')}
+            >
+              Back to Home
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -33,7 +149,7 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
         currentView={currentView}
         onNavigate={setCurrentView}
         onLogout={() => onNavigate('logout')}
-        onNavigateToEntry={() => onNavigate('entry')}
+        onNavigateToEntry={() => onNavigate('marketing')}
       />
       
       <main className="flex-1 overflow-y-auto">

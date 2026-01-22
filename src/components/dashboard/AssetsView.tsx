@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Bitcoin, Wallet, ArrowRight, TrendingUp, Settings, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bitcoin, Wallet, ArrowRight, TrendingUp, Settings, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '../ui/dialog';
 import { Input } from '../ui/input';
+import { api } from '../../services/api';
 
 interface AssetBalance {
   symbol: string;
@@ -26,71 +27,69 @@ interface AssetBalance {
   enabled: boolean;
 }
 
+const assetConfig: Record<string, { name: string; icon: typeof Bitcoin; color: string }> = {
+  btc: { name: 'Bitcoin Lightning', icon: Bitcoin, color: 'orange' },
+  eth: { name: 'Ethereum', icon: Wallet, color: 'purple' },
+  sol: { name: 'Solana', icon: Wallet, color: 'green' }
+};
+
 export function AssetsView() {
   const [showBalances, setShowBalances] = useState(true);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AssetBalance | null>(null);
   const [convertAmount, setConvertAmount] = useState('');
+  const [assets, setAssets] = useState<AssetBalance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [assets, setAssets] = useState<AssetBalance[]>([
-    {
-      symbol: 'BTC',
-      name: 'Bitcoin Lightning',
-      balance: 0.05234,
-      cadValue: 3245.67,
-      icon: Bitcoin,
-      color: 'orange',
-      enabled: true
-    },
-    {
-      symbol: 'ETH',
-      name: 'Ethereum',
-      balance: 1.2456,
-      cadValue: 4567.89,
-      icon: Wallet,
-      color: 'purple',
-      enabled: true
-    },
-    {
-      symbol: 'SOL',
-      name: 'Solana',
-      balance: 45.678,
-      cadValue: 2134.56,
-      icon: Wallet,
-      color: 'green',
-      enabled: false
-    }
-  ]);
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        setLoading(true);
+        const { assets: apiAssets } = await api.getAssetBalances();
+        
+        const formattedAssets: AssetBalance[] = apiAssets.map(asset => {
+          const config = assetConfig[asset.asset.toLowerCase()] || { name: asset.asset.toUpperCase(), icon: Wallet, color: 'gray' };
+          return {
+            symbol: asset.asset.toUpperCase(),
+            name: config.name,
+            balance: asset.balance,
+            cadValue: asset.cad_value,
+            icon: config.icon,
+            color: config.color,
+            enabled: asset.balance > 0
+          };
+        });
 
-  const conversionHistory = [
-    {
-      id: '1',
-      date: '2025-11-20',
-      asset: 'BTC',
-      amount: 0.01,
-      cadAmount: 650.00,
-      rate: 65000,
-      status: 'completed'
-    },
-    {
-      id: '2',
-      date: '2025-11-18',
-      asset: 'ETH',
-      amount: 0.5,
-      cadAmount: 1850.00,
-      rate: 3700,
-      status: 'completed'
-    },
-    {
-      id: '3',
-      date: '2025-11-15',
-      asset: 'SOL',
-      amount: 10,
-      cadAmount: 450.00,
-      rate: 45,
-      status: 'pending'
-    }
-  ];
+        // Ensure all three assets are shown (even with 0 balance)
+        ['btc', 'eth', 'sol'].forEach(assetKey => {
+          if (!formattedAssets.find(a => a.symbol.toLowerCase() === assetKey)) {
+            const config = assetConfig[assetKey];
+            formattedAssets.push({
+              symbol: assetKey.toUpperCase(),
+              name: config.name,
+              balance: 0,
+              cadValue: 0,
+              icon: config.icon,
+              color: config.color,
+              enabled: false
+            });
+          }
+        });
+
+        setAssets(formattedAssets);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch balances');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBalances();
+  }, []);
+
+  // Conversion history - empty for now (can be added later with a transactions table)
+  const conversionHistory: any[] = [];
 
   const toggleAsset = (symbol: string) => {
     setAssets(assets.map(asset => 

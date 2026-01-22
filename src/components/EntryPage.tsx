@@ -40,11 +40,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
     }
   };
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    onNavigate('dashboard');
-    return null;
-  }
+  // Don't auto-redirect - let users choose to go to dashboard or stay on entry page
   const quickLinks = [
     {
       title: 'Merchant Dashboard',

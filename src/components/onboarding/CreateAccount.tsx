@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
-import { Mail, Lock, Smartphone } from 'lucide-react';
+import { Mail, Lock, Smartphone, CheckCircle2, XCircle } from 'lucide-react';
 
 interface CreateAccountProps {
   onNext: (data: { email: string; password: string }) => void;
@@ -16,17 +16,54 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
   const [enable2FA, setEnable2FA] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Password requirements check
+  const passwordRequirements = {
+    length: password.length >= 12,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  };
+
+  const allRequirementsMet = Object.values(passwordRequirements).every(Boolean);
+
+  const validatePassword = (pwd: string): string | null => {
+    if (pwd.length < 12) {
+      return 'Password must be at least 12 characters';
+    }
+    
+    if (!/[a-z]/.test(pwd)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    
+    if (!/[A-Z]/.test(pwd)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    
+    if (!/[0-9]/.test(pwd)) {
+      return 'Password must contain at least one number';
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) {
+      return 'Password must contain at least one symbol';
+    }
+    
+    return null;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    // Validate password strength
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -72,14 +109,63 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(null); // Clear error when user types
+              }}
               className="pl-10"
               required
             />
           </div>
-          <p className="text-xs text-gray-500">
-            Must be at least 12 characters with uppercase, lowercase, numbers, and symbols
-          </p>
+          {password && (
+            <div className="mt-2 space-y-1.5 text-xs">
+              <div className={`flex items-center gap-2 ${passwordRequirements.length ? 'text-green-600' : 'text-gray-500'}`}>
+                {passwordRequirements.length ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>At least 12 characters</span>
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.lowercase ? 'text-green-600' : 'text-gray-500'}`}>
+                {passwordRequirements.lowercase ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>One lowercase letter</span>
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.uppercase ? 'text-green-600' : 'text-gray-500'}`}>
+                {passwordRequirements.uppercase ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>One uppercase letter</span>
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.number ? 'text-green-600' : 'text-gray-500'}`}>
+                {passwordRequirements.number ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>One number</span>
+              </div>
+              <div className={`flex items-center gap-2 ${passwordRequirements.symbol ? 'text-green-600' : 'text-gray-500'}`}>
+                {passwordRequirements.symbol ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>One symbol</span>
+              </div>
+            </div>
+          )}
+          {!password && (
+            <p className="text-xs text-gray-500">
+              Must be at least 12 characters with uppercase, lowercase, numbers, and symbols
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -91,11 +177,29 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
               type="password"
               placeholder="••••••••"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setError(null); // Clear error when user types
+              }}
               className="pl-10"
               required
             />
           </div>
+          {confirmPassword && password && (
+            <div className="flex items-center gap-2 text-xs">
+              {password === confirmPassword ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span className="text-green-600">Passwords match</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 text-red-600" />
+                  <span className="text-red-600">Passwords do not match</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -123,6 +227,7 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
           <Button
             type="submit"
             className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+            disabled={!allRequirementsMet || password !== confirmPassword}
           >
             Create Account & Continue
           </Button>

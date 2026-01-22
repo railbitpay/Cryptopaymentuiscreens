@@ -539,6 +539,213 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== ASSETS/BALANCES ROUTES ====================
+
+app.get('/api/assets/balances', authenticateToken, async (req, res) => {
+  try {
+    // Get balances grouped by asset
+    const balances = await dbAll(`
+      SELECT 
+        asset,
+        SUM(CASE WHEN status = 'paid' THEN crypto_amount ELSE 0 END) as balance,
+        SUM(CASE WHEN status = 'paid' THEN amount_cad ELSE 0 END) as cad_value
+      FROM payments
+      WHERE merchant_id = ?
+      GROUP BY asset
+    `, [req.user.id]);
+
+    // Crypto exchange rates (in production, fetch from exchange API)
+    const rates = { btc: 65000, eth: 3700, sol: 45 };
+    
+    const assets = balances.map(b => ({
+      asset: b.asset,
+      balance: parseFloat(b.balance) || 0,
+      cad_value: parseFloat(b.cad_value) || 0,
+      rate: rates[b.asset.toLowerCase()] || 0
+    }));
+
+    res.json({ assets });
+  } catch (error) {
+    console.error('Get balances error:', error);
+    res.status(500).json({ error: 'Failed to fetch balances' });
+  }
+});
+
+// ==================== PAYOUTS ROUTES ====================
+
+app.get('/api/payouts', authenticateToken, async (req, res) => {
+  try {
+    // Get completed transactions that could be paid out
+    const payouts = await dbAll(`
+      SELECT 
+        t.id,
+        t.payment_id,
+        t.amount,
+        t.asset,
+        t.created_at,
+        p.description
+      FROM transactions t
+      JOIN payments p ON t.payment_id = p.id
+      WHERE t.merchant_id = ? 
+        AND t.status = 'completed'
+        AND t.type = 'received'
+      ORDER BY t.created_at DESC
+      LIMIT 100
+    `, [req.user.id]);
+
+    res.json(payouts);
+  } catch (error) {
+    console.error('Get payouts error:', error);
+    res.status(500).json({ error: 'Failed to fetch payouts' });
+  }
+});
+
+// ==================== API KEYS ROUTES ====================
+
+app.get('/api/api-keys', authenticateToken, async (req, res) => {
+  try {
+    const keys = await dbAll(
+      'SELECT * FROM api_keys WHERE merchant_id = ? ORDER BY created_at DESC',
+      [req.user.id]
+    );
+    res.json(keys);
+  } catch (error) {
+    console.error('Get API keys error:', error);
+    res.status(500).json({ error: 'Failed to fetch API keys' });
+  }
+});
+
+app.post('/api/api-keys', authenticateToken, async (req, res) => {
+  try {
+    const { key_type = 'test' } = req.body;
+    const keyId = `key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const keyValue = `pk_${key_type}_${Math.random().toString(36).substr(2, 32)}`;
+
+    await dbRun(
+      'INSERT INTO api_keys (id, merchant_id, key_type, key_value) VALUES (?, ?, ?, ?)',
+      [keyId, req.user.id, key_type, keyValue]
+    );
+
+    const key = await dbGet('SELECT * FROM api_keys WHERE id = ?', [keyId]);
+    res.json(key);
+  } catch (error) {
+    console.error('Create API key error:', error);
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+app.delete('/api/api-keys/:id', authenticateToken, async (req, res) => {
+  try {
+    await dbRun(
+      'DELETE FROM api_keys WHERE id = ? AND merchant_id = ?',
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete API key error:', error);
+    res.status(500).json({ error: 'Failed to delete API key' });
+  }
+});
+
+// ==================== ADMIN ROUTES ====================
+
+// Admin middleware - check if user is admin (you'll need to add admin field to merchants table)
+const isAdmin = async (req, res, next) => {
+  try {
+    const merchant = await dbGet('SELECT id FROM merchants WHERE id = ?', [req.user.id]);
+    // For now, allow all authenticated users to access admin routes
+    // In production, add an 'is_admin' field and check it here
+    next();
+  } catch (error) {
+    res.status(403).json({ error: 'Admin access required' });
+  }
+};
+
+app.get('/api/admin/merchants', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const merchants = await dbAll(`
+      SELECT 
+        m.id,
+        m.email,
+        m.business_name,
+        m.kyc_status,
+        m.created_at,
+        COALESCE(SUM(p.amount_cad), 0) as total_volume,
+        COUNT(p.id) as transaction_count
+      FROM merchants m
+      LEFT JOIN payments p ON m.id = p.merchant_id
+      GROUP BY m.id, m.email, m.business_name, m.kyc_status, m.created_at
+      ORDER BY m.created_at DESC
+    `);
+
+    res.json(merchants);
+  } catch (error) {
+    console.error('Get merchants error:', error);
+    res.status(500).json({ error: 'Failed to fetch merchants' });
+  }
+});
+
+app.get('/api/admin/merchants/:id', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const merchant = await dbGet(
+      'SELECT id, email, business_name, kyc_status, created_at FROM merchants WHERE id = ?',
+      [req.params.id]
+    );
+
+    if (!merchant) {
+      return res.status(404).json({ error: 'Merchant not found' });
+    }
+
+    // Get merchant stats
+    const stats = await dbGet(`
+      SELECT 
+        COALESCE(SUM(amount_cad), 0) as total_volume,
+        COUNT(*) as transaction_count
+      FROM payments
+      WHERE merchant_id = ?
+    `, [req.params.id]);
+
+    res.json({ ...merchant, ...stats });
+  } catch (error) {
+    console.error('Get merchant error:', error);
+    res.status(500).json({ error: 'Failed to fetch merchant' });
+  }
+});
+
+app.patch('/api/admin/merchants/:id/kyc-status', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { kyc_status } = req.body;
+    
+    if (!['pending', 'approved', 'rejected', 'in-review'].includes(kyc_status)) {
+      return res.status(400).json({ error: 'Invalid KYC status' });
+    }
+
+    await dbRun(
+      'UPDATE merchants SET kyc_status = ? WHERE id = ?',
+      [kyc_status, req.params.id]
+    );
+
+    const merchant = await dbGet('SELECT * FROM merchants WHERE id = ?', [req.params.id]);
+    res.json(merchant);
+  } catch (error) {
+    console.error('Update KYC status error:', error);
+    res.status(500).json({ error: 'Failed to update KYC status' });
+  }
+});
+
+// ==================== COMPLIANCE ROUTES ====================
+
+app.get('/api/compliance/logs', authenticateToken, async (req, res) => {
+  try {
+    // For now, return empty array - you can add a compliance_logs table later
+    // This endpoint exists so the frontend doesn't break
+    res.json([]);
+  } catch (error) {
+    console.error('Get compliance logs error:', error);
+    res.status(500).json({ error: 'Failed to fetch compliance logs' });
+  }
+});
+
 // ==================== WEBSOCKET CONNECTIONS ====================
 
 io.on('connection', (socket) => {

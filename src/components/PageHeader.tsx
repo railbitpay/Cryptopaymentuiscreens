@@ -12,7 +12,7 @@ export function PageHeader({ onNavigate, title }: PageHeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <button 
-            onClick={() => onNavigate('entry')}
+            onClick={() => onNavigate('marketing')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
           >
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">

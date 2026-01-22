@@ -77,9 +77,13 @@ class ApiService {
       return response.json();
     } catch (error) {
       if (error instanceof Error) {
+        // Provide more helpful error messages
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          throw new Error(`Cannot connect to server. Please make sure the backend is running at ${API_BASE}`);
+        }
         throw error;
       }
-      throw new Error('Network error');
+      throw new Error('Network error - please check your connection and ensure the backend server is running');
     }
   }
 
@@ -139,9 +143,100 @@ class ApiService {
   async getTransactions(): Promise<Transaction[]> {
     return this.request<Transaction[]>('/transactions');
   }
+
+  // ==================== ASSETS ====================
+
+  async getAssetBalances() {
+    return this.request<{ assets: Array<{ asset: string; balance: number; cad_value: number; rate: number }> }>('/assets/balances');
+  }
+
+  // ==================== PAYOUTS ====================
+
+  async getPayouts() {
+    return this.request<Array<{
+      id: string;
+      payment_id: string;
+      amount: number;
+      asset: string;
+      created_at: string;
+      description?: string;
+    }>>('/payouts');
+  }
+
+  // ==================== API KEYS ====================
+
+  async getApiKeys() {
+    return this.request<Array<{
+      id: string;
+      merchant_id: string;
+      key_type: string;
+      key_value: string;
+      created_at: string;
+    }>>('/api-keys');
+  }
+
+  async createApiKey(key_type: 'test' | 'live' = 'test') {
+    return this.request<{
+      id: string;
+      merchant_id: string;
+      key_type: string;
+      key_value: string;
+      created_at: string;
+    }>('/api-keys', {
+      method: 'POST',
+      body: JSON.stringify({ key_type }),
+    });
+  }
+
+  async deleteApiKey(id: string) {
+    return this.request<{ success: boolean }>(`/api-keys/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== ADMIN ====================
+
+  async getMerchants() {
+    return this.request<Array<{
+      id: string;
+      email: string;
+      business_name: string;
+      kyc_status: string;
+      created_at: string;
+      total_volume: number;
+      transaction_count: number;
+    }>>('/admin/merchants');
+  }
+
+  async getMerchant(id: string) {
+    return this.request<{
+      id: string;
+      email: string;
+      business_name: string;
+      kyc_status: string;
+      created_at: string;
+      total_volume: number;
+      transaction_count: number;
+    }>(`/admin/merchants/${id}`);
+  }
+
+  async updateMerchantKycStatus(merchantId: string, kyc_status: 'pending' | 'approved' | 'rejected' | 'in-review') {
+    return this.request(`/admin/merchants/${merchantId}/kyc-status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ kyc_status }),
+    });
+  }
+
+  // ==================== COMPLIANCE ====================
+
+  async getComplianceLogs() {
+    return this.request<Array<any>>('/compliance/logs');
+  }
 }
 
 export const api = new ApiService();
+
+
 
 
 

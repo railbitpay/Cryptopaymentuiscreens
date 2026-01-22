@@ -1,4 +1,5 @@
-import { User, Key, Webhook, Users, Shield, Bell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Key, Webhook, Users, Shield, Bell, Loader2, Copy, CheckCircle2, Trash2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,24 +7,82 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
+import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 
 export function SettingsView() {
-  const apiKeys = [
-    {
-      id: '1',
-      name: 'Production API Key',
-      key: 'pk_live_51234567890abcdef',
-      created: '2025-10-15',
-      lastUsed: '2025-11-20'
-    },
-    {
-      id: '2',
-      name: 'Test API Key',
-      key: 'pk_test_51234567890abcdef',
-      created: '2025-10-15',
-      lastUsed: '2025-11-19'
+  const { user } = useAuth();
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createKeyDialogOpen, setCreateKeyDialogOpen] = useState(false);
+  const [newKeyType, setNewKeyType] = useState<'test' | 'live'>('test');
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchApiKeys = async () => {
+      try {
+        setLoading(true);
+        const keys = await api.getApiKeys();
+        setApiKeys(keys);
+      } catch (error) {
+        console.error('Failed to fetch API keys:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApiKeys();
+  }, []);
+
+  const handleCreateKey = async () => {
+    try {
+      const newKey = await api.createApiKey(newKeyType);
+      setApiKeys([newKey, ...apiKeys]);
+      setRevealedKeys(new Set([...revealedKeys, newKey.id]));
+      setCreateKeyDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to create API key:', error);
+      alert('Failed to create API key');
     }
-  ];
+  };
+
+  const handleDeleteKey = async (keyId: string) => {
+    if (!confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await api.deleteApiKey(keyId);
+      setApiKeys(apiKeys.filter(k => k.id !== keyId));
+      setRevealedKeys(new Set([...revealedKeys].filter(id => id !== keyId)));
+    } catch (error) {
+      console.error('Failed to delete API key:', error);
+      alert('Failed to delete API key');
+    }
+  };
+
+  const handleCopyKey = (keyValue: string, keyId: string) => {
+    navigator.clipboard.writeText(keyValue);
+    setCopiedKeyId(keyId);
+    setTimeout(() => setCopiedKeyId(null), 2000);
+  };
+
+  const toggleRevealKey = (keyId: string) => {
+    const newRevealed = new Set(revealedKeys);
+    if (newRevealed.has(keyId)) {
+      newRevealed.delete(keyId);
+    } else {
+      newRevealed.add(keyId);
+    }
+    setRevealedKeys(newRevealed);
+  };
 
   const webhooks = [
     {
@@ -77,19 +136,19 @@ export function SettingsView() {
               <h3 className="text-gray-900 mb-4">Business Information</h3>
               <div className="space-y-4 max-w-2xl">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Business Name</Label>
-                    <Input defaultValue="My Coffee Shop" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label>CRA Business Number</Label>
-                    <Input defaultValue="123456789RC0001" className="mt-1" disabled />
-                  </div>
+                <div>
+                  <Label>Business Name</Label>
+                  <Input defaultValue={user?.business_name || ''} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Email</Label>
-                  <Input type="email" defaultValue="contact@mycoffeeshop.ca" className="mt-1" />
+                  <Label>CRA Business Number</Label>
+                  <Input defaultValue="" className="mt-1" disabled />
                 </div>
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input type="email" defaultValue={user?.email || ''} className="mt-1" />
+              </div>
                 <div>
                   <Label>Business Address</Label>
                   <Input defaultValue="123 Main St, Toronto, ON M5V 1A1" className="mt-1" />
@@ -107,37 +166,123 @@ export function SettingsView() {
                   <h3 className="text-gray-900">API Keys</h3>
                   <p className="text-sm text-gray-600 mt-1">Manage your API credentials for integration</p>
                 </div>
-                <Button>Create New Key</Button>
+                <Button onClick={() => setCreateKeyDialogOpen(true)}>Create New Key</Button>
               </div>
-              <div className="divide-y divide-gray-200">
-                {apiKeys.map((key) => (
-                  <div key={key.id} className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="text-gray-900">{key.name}</h4>
-                          <Badge variant={key.key.startsWith('pk_live') ? 'default' : 'secondary'}>
-                            {key.key.startsWith('pk_live') ? 'Production' : 'Test'}
-                          </Badge>
+              {loading ? (
+                <div className="p-12 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+              ) : apiKeys.length === 0 ? (
+                <div className="p-12 text-center text-gray-600">
+                  <Key className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p>No API keys created yet</p>
+                  <p className="text-sm mt-2">Create your first API key to start integrating</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {apiKeys.map((key) => (
+                    <div key={key.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-gray-900">
+                              {key.key_type === 'live' ? 'Production API Key' : 'Test API Key'}
+                            </h4>
+                            <Badge variant={key.key_type === 'live' ? 'default' : 'secondary'}>
+                              {key.key_type === 'live' ? 'Production' : 'Test'}
+                            </Badge>
+                          </div>
+                          <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-2 font-mono text-sm flex items-center justify-between">
+                            <span>
+                              {revealedKeys.has(key.id) ? key.key_value : `${key.key_value.substring(0, 20)}••••••••••••••••`}
+                            </span>
+                            {revealedKeys.has(key.id) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCopyKey(key.key_value, key.id)}
+                                className="ml-2 h-6 px-2"
+                              >
+                                {copiedKeyId === key.id ? (
+                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                          <div className="flex gap-4 text-xs text-gray-600">
+                            <span>Created: {new Date(key.created_at).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                        <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-2 font-mono text-sm">
-                          {key.key}••••••••••••••••
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleRevealKey(key.id)}
+                          >
+                            {revealedKeys.has(key.id) ? 'Hide' : 'Reveal'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteKey(key.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <div className="flex gap-4 text-xs text-gray-600">
-                          <span>Created: {key.created}</span>
-                          <span>•</span>
-                          <span>Last used: {key.lastUsed}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button variant="outline" size="sm">Reveal</Button>
-                        <Button variant="destructive" size="sm">Revoke</Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
+
+            <Dialog open={createKeyDialogOpen} onOpenChange={setCreateKeyDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New API Key</DialogTitle>
+                  <DialogDescription>
+                    Choose the type of API key you want to create
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Key Type</Label>
+                    <div className="mt-2 space-y-2">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="keyType"
+                          value="test"
+                          checked={newKeyType === 'test'}
+                          onChange={() => setNewKeyType('test')}
+                          className="w-4 h-4"
+                        />
+                        <span>Test Key (for development)</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="keyType"
+                          value="live"
+                          checked={newKeyType === 'live'}
+                          onChange={() => setNewKeyType('live')}
+                          className="w-4 h-4"
+                        />
+                        <span>Live Key (for production)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreateKeyDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateKey}>Create Key</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Card className="p-6 bg-blue-50 border-blue-200">
               <h4 className="text-gray-900 mb-2">API Documentation</h4>

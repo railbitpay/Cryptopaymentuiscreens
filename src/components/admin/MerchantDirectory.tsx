@@ -1,60 +1,43 @@
-import { Search, Filter, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, Download, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { api } from '../../services/api';
 
 interface MerchantDirectoryProps {
   onSelectMerchant: (merchantId: string) => void;
 }
 
 export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) {
-  const merchants = [
-    {
-      id: '1',
-      businessName: 'My Coffee Shop',
-      email: 'contact@mycoffeeshop.ca',
-      craNumber: '123456789RC0001',
-      kycStatus: 'approved',
-      volumeCAD: 45678.90,
-      transactionCount: 234,
-      joinDate: '2025-10-15',
-      amlFlags: 0
-    },
-    {
-      id: '2',
-      businessName: 'Tech Solutions Inc',
-      email: 'billing@techsolutions.ca',
-      craNumber: '987654321RC0001',
-      kycStatus: 'in-review',
-      volumeCAD: 123456.78,
-      transactionCount: 567,
-      joinDate: '2025-11-01',
-      amlFlags: 1
-    },
-    {
-      id: '3',
-      businessName: 'Downtown Boutique',
-      email: 'info@downtownboutique.ca',
-      craNumber: '456789123RC0001',
-      kycStatus: 'approved',
-      volumeCAD: 23456.50,
-      transactionCount: 123,
-      joinDate: '2025-09-20',
-      amlFlags: 0
-    },
-    {
-      id: '4',
-      businessName: 'Maple Consulting',
-      email: 'admin@mapleconsulting.ca',
-      craNumber: '321654987RC0001',
-      kycStatus: 'rejected',
-      volumeCAD: 0,
-      transactionCount: 0,
-      joinDate: '2025-11-10',
-      amlFlags: 2
-    }
-  ];
+  const [merchants, setMerchants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  useEffect(() => {
+    const fetchMerchants = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getMerchants();
+        setMerchants(data);
+      } catch (error) {
+        console.error('Failed to fetch merchants:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMerchants();
+  }, []);
+
+  const filteredMerchants = merchants.filter(merchant => {
+    const matchesSearch = 
+      merchant.business_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      merchant.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterStatus === 'all' || merchant.kyc_status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
 
   const getKYCBadge = (status: string) => {
     const variants = {
@@ -119,8 +102,10 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
-                placeholder="Search by business name, email, or CRA number..."
+                placeholder="Search by business name, email..."
                 className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Button variant="outline">
@@ -147,45 +132,53 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
                 </tr>
               </thead>
               <tbody>
-                {merchants.map((merchant) => (
-                  <tr 
-                    key={merchant.id} 
-                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => onSelectMerchant(merchant.id)}
-                  >
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="text-sm text-gray-900">{merchant.businessName}</p>
-                        <p className="text-xs text-gray-500">Joined {merchant.joinDate}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-600">{merchant.email}</td>
-                    <td className="py-4 px-4 text-sm text-gray-600 font-mono">{merchant.craNumber}</td>
-                    <td className="py-4 px-4">
-                      {getKYCBadge(merchant.kycStatus)}
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-900">
-                      ${merchant.volumeCAD.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-900">
-                      {merchant.transactionCount}
-                    </td>
-                    <td className="py-4 px-4">
-                      {merchant.amlFlags > 0 ? (
-                        <Badge className="bg-red-100 text-red-800 border-red-200">
-                          {merchant.amlFlags}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-gray-500">—</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <Button variant="ghost" size="sm">
-                        View Details
-                      </Button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
                     </td>
                   </tr>
-                ))}
+                ) : filteredMerchants.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-gray-600">
+                      No merchants found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMerchants.map((merchant) => (
+                    <tr 
+                      key={merchant.id} 
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => onSelectMerchant(merchant.id)}
+                    >
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-sm text-gray-900">{merchant.business_name || 'N/A'}</p>
+                          <p className="text-xs text-gray-500">Joined {new Date(merchant.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{merchant.email}</td>
+                      <td className="py-4 px-4 text-sm text-gray-600 font-mono">—</td>
+                      <td className="py-4 px-4">
+                        {getKYCBadge(merchant.kyc_status)}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        ${(merchant.total_volume || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        {merchant.transaction_count || 0}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-500">—</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Button variant="ghost" size="sm">
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

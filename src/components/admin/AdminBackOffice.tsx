@@ -33,7 +33,7 @@ export function AdminBackOffice({ onNavigate }: AdminBackOfficeProps) {
         currentView={currentView}
         onNavigate={setCurrentView}
         onLogout={() => onNavigate('logout')}
-        onNavigateToEntry={() => onNavigate('entry')}
+        onNavigateToEntry={() => onNavigate('marketing')}
       />
       
       <main className="flex-1 overflow-y-auto">

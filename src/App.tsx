@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { NavigationHub } from './components/NavigationHub';
-import { EntryPage } from './components/EntryPage';
 import { MarketingSite } from './components/marketing/MarketingSite';
 import { MerchantOnboarding } from './components/onboarding/MerchantOnboarding';
 import { MerchantDashboard } from './components/dashboard/MerchantDashboard';
@@ -11,7 +10,6 @@ import { LogoutPage } from './components/LogoutPage';
 import { useAuth } from './contexts/AuthContext';
 
 export type AppView = 
-  | 'entry'
   | 'hub'
   | 'marketing' 
   | 'onboarding' 
@@ -40,7 +38,7 @@ export default function App() {
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Check URL for payment ID (for customer payment links) and handle initial redirect
+  // Check URL for payment ID (for customer payment links)
   useEffect(() => {
     if (hasInitialized) return; // Only run once on mount
     
@@ -53,13 +51,10 @@ export default function App() {
       return;
     }
     
-    // If authenticated on initial load, redirect to dashboard
-    if (!loading && isAuthenticated) {
-      setCurrentView('dashboard');
-    }
-    
+    // Don't auto-redirect authenticated users - let them navigate manually
+    // This allows them to see the marketing page even if logged in
     setHasInitialized(true);
-  }, [isAuthenticated, loading, hasInitialized]);
+  }, [hasInitialized]);
 
   const handleCreatePayment = (id: string) => {
     setPaymentId(id);
@@ -79,9 +74,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {currentView === 'entry' && (
-        <EntryPage onNavigate={setCurrentView} />
-      )}
       {currentView === 'hub' && (
         <NavigationHub onNavigate={setCurrentView} />
       )}

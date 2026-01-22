@@ -34,71 +34,8 @@ export function PaymentsView() {
       payment.address.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedTab === 'all') return matchesSearch;
-    return matchesSearch && payment.asset === selectedTab;
+    return matchesSearch && payment.asset.toLowerCase() === selectedTab.toLowerCase();
   });
-
-  const mockPayments = [
-    {
-      id: 'PAY-5678',
-      asset: 'BTC Lightning',
-      amount: '0.025',
-      cadValue: '$1,450.00',
-      status: 'paid',
-      customer: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-      date: '2025-11-21 14:30',
-      txHash: '3a4b5c...'
-    },
-    {
-      id: 'PAY-5677',
-      asset: 'ETH',
-      amount: '2.5',
-      cadValue: '$5,200.00',
-      status: 'paid',
-      customer: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
-      date: '2025-11-21 09:15',
-      txHash: '9f8e7d...'
-    },
-    {
-      id: 'PAY-5676',
-      asset: 'SOL',
-      amount: '100',
-      cadValue: '$12,500.00',
-      status: 'pending',
-      customer: 'SoLa9k3mPqRtXx7Wy6Bz4Nv8Hj5Fg2Kl1',
-      date: '2025-11-20 18:45',
-      txHash: 'pending'
-    },
-    {
-      id: 'PAY-5675',
-      asset: 'BTC Lightning',
-      amount: '0.05',
-      cadValue: '$2,900.00',
-      status: 'paid',
-      customer: 'bc1q34aq5drpuwy3wgl9lhup9892qnqp82lar34r',
-      date: '2025-11-20 16:20',
-      txHash: '2c3d4e...'
-    },
-    {
-      id: 'PAY-5674',
-      asset: 'ETH',
-      amount: '1.2',
-      cadValue: '$2,496.00',
-      status: 'failed',
-      customer: '0x8ba1f109551bd432803012645c136a87a8db1bc8',
-      date: '2025-11-20 11:30',
-      txHash: 'failed'
-    },
-    {
-      id: 'PAY-5673',
-      asset: 'SOL',
-      amount: '50',
-      cadValue: '$6,250.00',
-      status: 'paid',
-      customer: 'SoLb2k4nPqRtXx7Wy6Bz4Nv8Hj5Fg2Kl2',
-      date: '2025-11-19 22:10',
-      txHash: '1a2b3c...'
-    }
-  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {

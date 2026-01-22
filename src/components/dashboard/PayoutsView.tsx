@@ -1,76 +1,45 @@
-import { ArrowDownToLine, Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowDownToLine, Calendar, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { api } from '../../services/api';
 
 interface Payout {
   id: string;
-  date: string;
+  payment_id: string;
   amount: number;
-  status: 'completed' | 'pending' | 'failed';
-  transferId: string;
-  method: 'EFT';
-  conversionRate?: number;
-  cryptoAmount?: number;
-  cryptoAsset?: string;
+  asset: string;
+  created_at: string;
+  description?: string;
 }
 
 export function PayoutsView() {
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPayouts = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getPayouts();
+        setPayouts(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch payouts');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayouts();
+  }, []);
+
   const upcomingPayout = {
     scheduledDate: '2025-11-25',
-    estimatedAmount: 5234.56,
-    paymentCount: 23
+    estimatedAmount: payouts.reduce((sum, p) => sum + p.amount, 0),
+    paymentCount: payouts.length
   };
-
-  const payouts: Payout[] = [
-    {
-      id: '1',
-      date: '2025-11-20',
-      amount: 4567.89,
-      status: 'completed',
-      transferId: 'EFT-20251120-001',
-      method: 'EFT',
-      conversionRate: 62000,
-      cryptoAmount: 0.0737,
-      cryptoAsset: 'BTC'
-    },
-    {
-      id: '2',
-      date: '2025-11-18',
-      amount: 3245.12,
-      status: 'completed',
-      transferId: 'EFT-20251118-001',
-      method: 'EFT',
-      conversionRate: 3650,
-      cryptoAmount: 0.889,
-      cryptoAsset: 'ETH'
-    },
-    {
-      id: '3',
-      date: '2025-11-15',
-      amount: 2134.50,
-      status: 'completed',
-      transferId: 'EFT-20251115-001',
-      method: 'EFT'
-    },
-    {
-      id: '4',
-      date: '2025-11-13',
-      amount: 5678.90,
-      status: 'completed',
-      transferId: 'EFT-20251113-001',
-      method: 'EFT'
-    },
-    {
-      id: '5',
-      date: '2025-11-11',
-      amount: 1234.00,
-      status: 'failed',
-      transferId: 'EFT-20251111-001',
-      method: 'EFT'
-    }
-  ];
 
   const getStatusIcon = (status: Payout['status']) => {
     switch (status) {
@@ -182,24 +151,48 @@ export function PayoutsView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {payouts.map((payout) => (
-                        <tr key={payout.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4 text-sm text-gray-900">{payout.date}</td>
-                          <td className="py-4 px-4 text-sm text-gray-900">
-                            ${payout.amount.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-gray-600">{payout.transferId}</td>
-                          <td className="py-4 px-4">
-                            <Badge variant="outline">{payout.method}</Badge>
-                          </td>
-                          <td className="py-4 px-4">
-                            {getStatusBadge(payout.status)}
-                          </td>
-                          <td className="py-4 px-4">
-                            <Button variant="ghost" size="sm">View Details</Button>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
                           </td>
                         </tr>
-                      ))}
+                      ) : error ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-red-600">
+                            {error}
+                          </td>
+                        </tr>
+                      ) : payouts.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-600">
+                            No payouts yet
+                          </td>
+                        </tr>
+                      ) : (
+                        payouts.map((payout) => (
+                          <tr key={payout.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-4 px-4 text-sm text-gray-900">
+                              {new Date(payout.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-900">
+                              ${payout.amount.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-600 font-mono">
+                              {payout.payment_id.substring(0, 12)}...
+                            </td>
+                            <td className="py-4 px-4">
+                              <Badge variant="outline">{payout.asset.toUpperCase()}</Badge>
+                            </td>
+                            <td className="py-4 px-4">
+                              {getStatusBadge('completed')}
+                            </td>
+                            <td className="py-4 px-4">
+                              <Button variant="ghost" size="sm">View Details</Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

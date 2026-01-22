@@ -22,9 +22,11 @@ export function BusinessInformation({ onNext, onBack }: BusinessInformationProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (businessName) {
-      onNext({ businessName });
+    // Validate all required fields
+    if (!businessName || !craNumber || !industry || !address || !city || !province || !postalCode) {
+      return; // HTML5 validation will show required field messages
     }
+    onNext({ businessName });
   };
 
   const provinces = [

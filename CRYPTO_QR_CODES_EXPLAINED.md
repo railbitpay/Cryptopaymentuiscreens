@@ -279,3 +279,5 @@ The QR code generation itself is working correctly - we're just using mock data 
 
 
 
+
+

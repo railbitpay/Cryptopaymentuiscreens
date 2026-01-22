@@ -22,7 +22,7 @@ export function LogoutPage({ onNavigate }: LogoutPageProps) {
         
         <div className="space-y-3">
           <Button 
-            onClick={() => onNavigate('entry')}
+            onClick={() => onNavigate('marketing')}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             Return to Home
