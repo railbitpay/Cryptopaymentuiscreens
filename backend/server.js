@@ -825,12 +825,26 @@ app.put('/api/merchants/settlement', authenticateToken, async (req, res) => {
   try {
     const {
       settlementMode,
+      settlement_mode, // Accept both camelCase and snake_case
       settlementAssets = [],
+      settlement_assets = [],
       bankName,
+      bank_name,
       bankTransit,
+      bank_transit,
       bankInstitution,
-      bankAccount
+      bank_institution,
+      bankAccount,
+      bank_account
     } = req.body;
+
+    // Use camelCase or snake_case, preferring camelCase
+    const mode = settlementMode || settlement_mode || 'cad';
+    const assets = settlementAssets.length > 0 ? settlementAssets : settlement_assets;
+    const bankNameValue = bankName || bank_name;
+    const bankTransitValue = bankTransit || bank_transit;
+    const bankInstitutionValue = bankInstitution || bank_institution;
+    const bankAccountValue = bankAccount || bank_account;
 
     await dbRun(
       `UPDATE merchants SET 
@@ -842,12 +856,12 @@ app.put('/api/merchants/settlement', authenticateToken, async (req, res) => {
         bank_account = COALESCE(?, bank_account)
        WHERE id = ?`,
       [
-        settlementMode || 'cad',
-        JSON.stringify(settlementAssets || []),
-        bankName || null,
-        bankTransit || null,
-        bankInstitution || null,
-        bankAccount || null,
+        mode,
+        JSON.stringify(assets || []),
+        bankNameValue || null,
+        bankTransitValue || null,
+        bankInstitutionValue || null,
+        bankAccountValue || null,
         req.user.id
       ]
     );

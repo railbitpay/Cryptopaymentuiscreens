@@ -32,17 +32,20 @@ export type DashboardView =
   | 'settings';
 
 export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
-  const { isAuthenticated, loading, login } = useAuth();
+  const { isAuthenticated, loading, login, user } = useAuth();
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect to marketing if not authenticated (after loading)
+  // Ensure we show login form if not authenticated
   useEffect(() => {
+    // Clear any stale form state when authentication state changes
     if (!loading && !isAuthenticated) {
-      // Don't auto-redirect, show login form instead
+      setEmail('');
+      setPassword('');
+      setError(null);
     }
   }, [isAuthenticated, loading]);
 

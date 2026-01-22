@@ -134,6 +134,8 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     if (currentStep < 5) {
       if (currentStep === 4 && data?.settlementMode) {
         try {
+          setLoading(true);
+          setError(null);
           await api.updateSettlement({
             settlement_mode: data.settlementMode,
             settlement_assets: data.settlementAssets || [],
@@ -142,9 +144,13 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
             bank_institution: data.bankInstitution,
             bank_account: data.bankAccount
           });
+          setLoading(false);
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to save settlement preferences');
-          return;
+          console.error('Settlement update error:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Failed to save settlement preferences';
+          setError(errorMessage);
+          setLoading(false);
+          return; // Don't proceed if settlement update fails
         }
       }
       setCurrentStep((currentStep + 1) as OnboardingStep);

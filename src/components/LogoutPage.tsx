@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
+import { useAuth } from '../contexts/AuthContext';
 import type { AppView } from '../App';
 
 interface LogoutPageProps {
@@ -8,6 +10,13 @@ interface LogoutPageProps {
 }
 
 export function LogoutPage({ onNavigate }: LogoutPageProps) {
+  const { logout } = useAuth();
+  
+  // Ensure logout is called when this page loads
+  useEffect(() => {
+    logout();
+  }, [logout]);
+  
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="p-8 max-w-md w-full text-center">

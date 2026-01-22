@@ -1,5 +1,6 @@
 import { Store, Activity, Shield, Server, LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useAuth } from '../../contexts/AuthContext';
 import type { AdminView } from './AdminBackOffice';
 
 interface AdminSidebarProps {
@@ -10,6 +11,12 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: AdminSidebarProps) {
+  const { logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout(); // Clear authentication state
+    onLogout(); // Navigate to logout page
+  };
   const menuItems = [
     { id: 'merchants' as AdminView, label: 'Merchants', icon: Store },
     { id: 'monitoring' as AdminView, label: 'Transaction Monitoring', icon: Activity },
@@ -61,7 +68,7 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
       <div className="p-4 border-t border-gray-800">
         <Button
           variant="ghost"
-          onClick={onLogout}
+          onClick={handleLogout}
           className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
         >
           <LogOut className="w-5 h-5 mr-3" />

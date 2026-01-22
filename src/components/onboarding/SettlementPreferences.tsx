@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -27,19 +27,36 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
   const [transitNumber, setTransitNumber] = useState('');
   const [institutionNumber, setInstitutionNumber] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Validate: if CAD settlement, bank details are required
+    if (settlementMode === 'cad') {
+      if (!bankName || !transitNumber || !institutionNumber || !accountNumber) {
+        // Form validation will handle this via required attributes
+        return;
+      }
+    }
+    
+    // Validate: at least one cryptocurrency must be selected
+    const selectedAssets = [
+      enableBTC ? 'btc' : null,
+      enableETH ? 'eth' : null,
+      enableSOL ? 'sol' : null
+    ].filter(Boolean) as string[];
+    
+    if (selectedAssets.length === 0) {
+      // This shouldn't happen since all are checked by default, but handle it
+      return;
+    }
+    
     onNext({
       settlementMode,
-      settlementAssets: [
-        enableBTC ? 'btc' : null,
-        enableETH ? 'eth' : null,
-        enableSOL ? 'sol' : null
-      ].filter(Boolean) as string[],
-      bankName,
-      bankTransit,
-      bankInstitution,
-      bankAccount
+      settlementAssets: selectedAssets,
+      bankName: settlementMode === 'cad' ? bankName : undefined,
+      bankTransit: settlementMode === 'cad' ? transitNumber : undefined,
+      bankInstitution: settlementMode === 'cad' ? institutionNumber : undefined,
+      bankAccount: settlementMode === 'cad' ? accountNumber : undefined
     });
   };
 
