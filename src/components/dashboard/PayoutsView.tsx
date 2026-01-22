@@ -11,6 +11,8 @@ interface Payout {
   payment_id: string;
   amount: number;
   asset: string;
+  crypto_amount: number;
+  status: string;
   created_at: string;
   description?: string;
 }
@@ -35,8 +37,16 @@ export function PayoutsView() {
     fetchPayouts();
   }, []);
 
+  const nextPayoutDate = (() => {
+    const date = new Date();
+    const day = date.getDay();
+    const daysUntilMonday = (8 - day) % 7 || 7;
+    date.setDate(date.getDate() + daysUntilMonday);
+    return date.toISOString().split('T')[0];
+  })();
+
   const upcomingPayout = {
-    scheduledDate: '2025-11-25',
+    scheduledDate: nextPayoutDate,
     estimatedAmount: payouts.reduce((sum, p) => sum + p.amount, 0),
     paymentCount: payouts.length
   };
@@ -185,7 +195,7 @@ export function PayoutsView() {
                               <Badge variant="outline">{payout.asset.toUpperCase()}</Badge>
                             </td>
                             <td className="py-4 px-4">
-                              {getStatusBadge('completed')}
+                              {getStatusBadge(payout.status)}
                             </td>
                             <td className="py-4 px-4">
                               <Button variant="ghost" size="sm">View Details</Button>

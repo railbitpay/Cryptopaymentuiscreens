@@ -79,20 +79,18 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Approved</p>
             <p className="text-2xl text-green-600">
-              {merchants.filter(m => m.kycStatus === 'approved').length}
+              {merchants.filter(m => m.kyc_status === 'approved').length}
             </p>
           </Card>
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">In Review</p>
             <p className="text-2xl text-yellow-600">
-              {merchants.filter(m => m.kycStatus === 'in-review').length}
+              {merchants.filter(m => m.kyc_status === 'in-review').length}
             </p>
           </Card>
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">With AML Flags</p>
-            <p className="text-2xl text-red-600">
-              {merchants.filter(m => m.amlFlags > 0).length}
-            </p>
+            <p className="text-2xl text-red-600">0</p>
           </Card>
         </div>
 

@@ -6,7 +6,7 @@ import { Card } from '../ui/card';
 import { Mail, Lock, Smartphone, CheckCircle2, XCircle } from 'lucide-react';
 
 interface CreateAccountProps {
-  onNext: (data: { email: string; password: string }) => void;
+  onNext: (data: { email: string; password: string; enable2FA: boolean }) => void;
 }
 
 export function CreateAccount({ onNext }: CreateAccountProps) {
@@ -67,7 +67,7 @@ export function CreateAccount({ onNext }: CreateAccountProps) {
       return;
     }
 
-    onNext({ email, password });
+    onNext({ email, password, enable2FA });
   };
 
   return (

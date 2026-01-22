@@ -6,7 +6,14 @@ import { Card } from '../ui/card';
 import { Bitcoin, Wallet, DollarSign, Building2 } from 'lucide-react';
 
 interface SettlementPreferencesProps {
-  onNext: () => void;
+  onNext: (data: {
+    settlementMode: 'cad' | 'crypto';
+    settlementAssets: string[];
+    bankName?: string;
+    bankTransit?: string;
+    bankInstitution?: string;
+    bankAccount?: string;
+  }) => void;
   onBack: () => void;
 }
 
@@ -22,7 +29,18 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onNext();
+    onNext({
+      settlementMode,
+      settlementAssets: [
+        enableBTC ? 'btc' : null,
+        enableETH ? 'eth' : null,
+        enableSOL ? 'sol' : null
+      ].filter(Boolean) as string[],
+      bankName,
+      bankTransit,
+      bankInstitution,
+      bankAccount
+    });
   };
 
   return (

@@ -1,75 +1,53 @@
-import { Shield, FileText, AlertTriangle, CheckCircle2, Clock, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, FileText, AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
+import { api, ComplianceLogs } from '../../services/api';
 
 export function ComplianceLogsView() {
-  const kycStatus = {
-    status: 'approved',
-    lastReview: '2025-10-15',
-    nextReview: '2026-10-15',
-    documents: [
-      { name: 'Business Incorporation', status: 'approved', uploadDate: '2025-10-10' },
-      { name: 'Beneficial Owner ID', status: 'approved', uploadDate: '2025-10-10' },
-      { name: 'Proof of Address', status: 'approved', uploadDate: '2025-10-12' }
-    ]
-  };
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+  const [data, setData] = useState<ComplianceLogs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const transactionMonitoring = [
-    {
-      id: '1',
-      date: '2025-11-20',
-      type: 'Large Transaction',
-      amount: 12500,
-      asset: 'BTC',
-      description: 'Transaction exceeds $10,000 CAD threshold',
-      status: 'logged',
-      action: 'Reported to FINTRAC'
-    },
-    {
-      id: '2',
-      date: '2025-11-18',
-      type: 'Velocity Check',
-      amount: 8500,
-      asset: 'ETH',
-      description: 'Multiple transactions in short timeframe',
-      status: 'reviewed',
-      action: 'No action required'
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const result = await api.getComplianceLogs();
+        setData(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load compliance logs');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const amlAlerts = [
-    {
-      id: '1',
-      date: '2025-11-19',
-      severity: 'medium',
-      type: 'Unusual Pattern',
-      description: 'Higher than normal transaction frequency detected',
-      status: 'under-review',
-      assignedTo: 'Compliance Team'
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
-  const fintracReports = [
-    {
-      id: '1',
-      type: 'Large Virtual Currency Transaction Report',
-      date: '2025-11-20',
-      amount: 12500,
-      status: 'submitted',
-      reportId: 'LVCTR-2025-001'
-    },
-    {
-      id: '2',
-      type: 'Monthly Compliance Report',
-      date: '2025-11-01',
-      amount: null,
-      status: 'submitted',
-      reportId: 'MCR-2025-11'
-    }
-  ];
+  if (error || !data) {
+    return (
+      <div className="p-8">
+        <Alert className="border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-900">{error || 'Unable to load compliance data'}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const { kycStatus, transactionMonitoring, amlAlerts, fintracReports } = data;
 
   return (
     <div className="p-8">
@@ -88,11 +66,11 @@ export function ComplianceLogsView() {
                 <CheckCircle2 className="w-6 h-6 text-green-600" />
               </div>
               <Badge className="bg-green-100 text-green-800 border-green-200">
-                APPROVED
+                {kycStatus.status.toUpperCase()}
               </Badge>
             </div>
             <h3 className="text-gray-900 mb-1">KYC Status</h3>
-            <p className="text-sm text-gray-600">Last reviewed: {kycStatus.lastReview}</p>
+            <p className="text-sm text-gray-600">Last reviewed: {kycStatus.lastReview || '—'}</p>
           </Card>
 
           <Card className="p-6">
@@ -149,34 +127,41 @@ export function ComplianceLogsView() {
                   <div>
                     <h3 className="text-gray-900">KYC Verification Documents</h3>
                     <p className="text-sm text-gray-600 mt-1">
-                      Next review scheduled: {kycStatus.nextReview}
+                      Next review scheduled: {kycStatus.nextReview || '—'}
                     </p>
                   </div>
-                  <Button variant="outline">Upload New Document</Button>
                 </div>
               </div>
               <div className="divide-y divide-gray-200">
-                {kycStatus.documents.map((doc, index) => (
-                  <div key={index} className="p-6 flex items-center justify-between hover:bg-gray-50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-blue-600" />
+                {kycStatus.documents.length === 0 ? (
+                  <div className="p-6 text-sm text-gray-600">No documents uploaded</div>
+                ) : (
+                  kycStatus.documents.map((doc, index) => (
+                    <div key={index} className="p-6 flex items-center justify-between hover:bg-gray-50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900">{doc.name}</p>
+                          <p className="text-xs text-gray-600">Uploaded: {doc.uploadDate}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-900">{doc.name}</p>
-                        <p className="text-xs text-gray-600">Uploaded: {doc.uploadDate}</p>
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          {doc.status.toUpperCase()}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`${apiBase}/kyc/documents/${doc.id}/download`, '_blank')}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-green-100 text-green-800 border-green-200">
-                        {doc.status.toUpperCase()}
-                      </Badge>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>
@@ -198,33 +183,39 @@ export function ComplianceLogsView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactionMonitoring.map((item) => (
-                      <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4 text-sm text-gray-900">{item.date}</td>
-                        <td className="py-4 px-4">
-                          <Badge variant="outline">{item.type}</Badge>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-900">
-                          ${item.amount.toLocaleString()}
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
-                            {item.asset}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{item.description}</td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{item.action}</td>
-                        <td className="py-4 px-4">
-                          <Badge className={
-                            item.status === 'logged' 
-                              ? 'bg-blue-100 text-blue-800 border-blue-200'
-                              : 'bg-green-100 text-green-800 border-green-200'
-                          }>
-                            {item.status.toUpperCase()}
-                          </Badge>
-                        </td>
+                    {transactionMonitoring.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-gray-600">No monitoring events</td>
                       </tr>
-                    ))}
+                    ) : (
+                      transactionMonitoring.map((item) => (
+                        <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4 text-sm text-gray-900">{item.date}</td>
+                          <td className="py-4 px-4">
+                            <Badge variant="outline">{item.type}</Badge>
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-900">
+                            ${item.amount.toLocaleString()}
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                              {item.asset}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-600">{item.description}</td>
+                          <td className="py-4 px-4 text-sm text-gray-600">{item.action}</td>
+                          <td className="py-4 px-4">
+                            <Badge className={
+                              item.status === 'logged' 
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : 'bg-green-100 text-green-800 border-green-200'
+                            }>
+                              {item.status.toUpperCase()}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -235,38 +226,38 @@ export function ComplianceLogsView() {
           <TabsContent value="aml" className="mt-6">
             <Card>
               <div className="divide-y divide-gray-200">
-                {amlAlerts.map((alert) => (
-                  <div key={alert.id} className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-gray-900">{alert.type}</h4>
-                            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                              {alert.severity.toUpperCase()}
-                            </Badge>
+                {amlAlerts.length === 0 ? (
+                  <div className="p-6 text-sm text-gray-600">No AML alerts</div>
+                ) : (
+                  amlAlerts.map((alert) => (
+                    <div key={alert.id} className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-5 h-5 text-yellow-600" />
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{alert.description}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>Created: {alert.date}</span>
-                            <span>•</span>
-                            <span>Assigned to: {alert.assignedTo}</span>
+                          <div>
+                            <div className="flex items-center gap-3 mb-1">
+                              <h4 className="text-gray-900">{alert.type}</h4>
+                              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                                {alert.severity.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{alert.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>Created: {alert.date}</span>
+                              <span>•</span>
+                              <span>Assigned to: {alert.assignedTo}</span>
+                            </div>
                           </div>
                         </div>
+                        <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                          {alert.status.toUpperCase()}
+                        </Badge>
                       </div>
-                      <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                        {alert.status.toUpperCase()}
-                      </Badge>
                     </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm">Review Alert</Button>
-                      <Button size="sm" variant="outline">Dismiss</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>
@@ -287,27 +278,33 @@ export function ComplianceLogsView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {fintracReports.map((report) => (
-                      <tr key={report.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4 text-sm text-gray-900">{report.type}</td>
-                        <td className="py-4 px-4 text-sm text-gray-900">{report.date}</td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{report.reportId}</td>
-                        <td className="py-4 px-4 text-sm text-gray-900">
-                          {report.amount ? `$${report.amount.toLocaleString()}` : '—'}
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            {report.status.toUpperCase()}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Button variant="ghost" size="sm">
-                            <Download className="w-4 h-4 mr-2" />
-                            Download
-                          </Button>
-                        </td>
+                    {fintracReports.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-600">No FINTRAC reports</td>
                       </tr>
-                    ))}
+                    ) : (
+                      fintracReports.map((report) => (
+                        <tr key={report.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4 text-sm text-gray-900">{report.type}</td>
+                          <td className="py-4 px-4 text-sm text-gray-900">{report.date}</td>
+                          <td className="py-4 px-4 text-sm text-gray-600">{report.reportId}</td>
+                          <td className="py-4 px-4 text-sm text-gray-900">
+                            {report.amount ? `$${report.amount.toLocaleString()}` : '—'}
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              {report.status.toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <Button variant="ghost" size="sm">
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

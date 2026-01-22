@@ -4,9 +4,10 @@ import { BusinessInformation } from './BusinessInformation';
 import { KYCVerification } from './KYCVerification';
 import { SettlementPreferences } from './SettlementPreferences';
 import { OnboardingSuccess } from './OnboardingSuccess';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import type { AppView } from '../../App';
 
 interface MerchantOnboardingProps {
@@ -25,6 +26,13 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     email?: string;
     password?: string;
     businessName?: string;
+    businessNumber?: string;
+    industry?: string;
+    addressLine1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    enable2FA?: boolean;
   }>({});
 
   const steps = [
@@ -35,7 +43,24 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     { id: 5, title: 'Complete', description: 'Ready to go' }
   ];
 
-  const handleNext = async (data?: { email?: string; password?: string; businessName?: string }) => {
+  const handleNext = async (data?: {
+    email?: string;
+    password?: string;
+    businessName?: string;
+    businessNumber?: string;
+    industry?: string;
+    addressLine1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    enable2FA?: boolean;
+    settlementMode?: 'cad' | 'crypto';
+    settlementAssets?: string[];
+    bankName?: string;
+    bankTransit?: string;
+    bankInstitution?: string;
+    bankAccount?: string;
+  }) => {
     setError(null);
     
     // Update onboarding data first
@@ -51,9 +76,29 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
       if (email && password && businessName) {
         try {
           setLoading(true);
-          await register(email, password, businessName);
-          setOnboardingData({ email, password, businessName });
+          await register(email, password, businessName, {
+            businessNumber: updatedData.businessNumber,
+            industry: updatedData.industry,
+            addressLine1: updatedData.addressLine1,
+            city: updatedData.city,
+            province: updatedData.province,
+            postalCode: updatedData.postalCode,
+            twoFactorEnabled: updatedData.enable2FA
+          });
+          setOnboardingData({
+            email,
+            password,
+            businessName,
+            businessNumber: updatedData.businessNumber,
+            industry: updatedData.industry,
+            addressLine1: updatedData.addressLine1,
+            city: updatedData.city,
+            province: updatedData.province,
+            postalCode: updatedData.postalCode,
+            enable2FA: updatedData.enable2FA
+          });
           setCurrentStep(3);
+          setLoading(false);
           return;
         } catch (err) {
           console.error('Registration failed:', err);
@@ -73,7 +118,12 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     
     // For step 1, save email and password
     if (currentStep === 1 && data) {
-      setOnboardingData(prev => ({ ...prev, email: data.email, password: data.password }));
+      setOnboardingData(prev => ({ 
+        ...prev, 
+        email: data.email, 
+        password: data.password,
+        enable2FA: data.enable2FA 
+      }));
     }
     
     // For other steps, just update data and move forward
@@ -82,6 +132,21 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     }
     
     if (currentStep < 5) {
+      if (currentStep === 4 && data?.settlementMode) {
+        try {
+          await api.updateSettlement({
+            settlement_mode: data.settlementMode,
+            settlement_assets: data.settlementAssets || [],
+            bank_name: data.bankName,
+            bank_transit: data.bankTransit,
+            bank_institution: data.bankInstitution,
+            bank_account: data.bankAccount
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to save settlement preferences');
+          return;
+        }
+      }
       setCurrentStep((currentStep + 1) as OnboardingStep);
     }
   };

@@ -19,6 +19,51 @@ export interface Merchant {
   email: string;
   business_name: string;
   kyc_status: string;
+  two_factor_enabled?: boolean;
+  business_number?: string | null;
+  industry?: string | null;
+  phone?: string | null;
+  address_line1?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postal_code?: string | null;
+  notifications?: NotificationSettings;
+}
+
+export interface MerchantProfile extends Merchant {
+  business_number?: string | null;
+  industry?: string | null;
+  phone?: string | null;
+  address_line1?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postal_code?: string | null;
+  settlement_mode?: string | null;
+  settlement_assets?: string[];
+  bank_name?: string | null;
+  bank_transit?: string | null;
+  bank_institution?: string | null;
+  bank_account?: string | null;
+  two_factor_enabled?: boolean;
+  notifications?: NotificationSettings;
+  created_at?: string;
+}
+
+export interface NotificationSettings {
+  payment_received: boolean;
+  payment_failed: boolean;
+  weekly_summary: boolean;
+  compliance_alerts: boolean;
+  marketing_updates: boolean;
+}
+
+export interface SettlementPreferences {
+  settlement_mode: 'cad' | 'crypto';
+  settlement_assets: string[];
+  bank_name?: string | null;
+  bank_transit?: string | null;
+  bank_institution?: string | null;
+  bank_account?: string | null;
 }
 
 export interface DashboardStats {
@@ -41,6 +86,146 @@ export interface Transaction {
   amount: number;
   asset: string;
   status: string;
+  created_at: string;
+}
+
+export interface KycDocument {
+  id: string;
+  name: string;
+  document_type: string;
+  status: string;
+  upload_date: string;
+  file_path?: string;
+  mime_type?: string;
+  file_size?: number;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  status: string;
+  created_at: string;
+  last_delivery?: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  name?: string | null;
+  email: string;
+  role: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Payout {
+  id: string;
+  payment_id?: string | null;
+  amount: number;
+  asset: string;
+  crypto_amount: number;
+  status: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface ComplianceLogs {
+  kycStatus: {
+    status: string;
+    lastReview: string | null;
+    nextReview: string | null;
+    documents: Array<{ id: string; name: string; status: string; uploadDate: string }>;
+  };
+  transactionMonitoring: Array<{
+    id: string;
+    date: string;
+    type: string;
+    amount: number;
+    asset: string;
+    description: string;
+    status: string;
+    action: string;
+  }>;
+  amlAlerts: Array<{
+    id: string;
+    date: string;
+    severity: string;
+    type: string;
+    description: string;
+    status: string;
+    assignedTo: string;
+  }>;
+  fintracReports: Array<{
+    id: string;
+    type: string;
+    date: string;
+    amount: number | null;
+    status: string;
+    reportId: string;
+  }>;
+}
+
+export interface AdminMonitoringResponse {
+  stats: {
+    totalToday: number;
+    countToday: number;
+    largeTransactions: number;
+    suspiciousPatterns: number;
+  };
+  recentTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    asset: string;
+    cadValue: number;
+    timestamp: string;
+    flag: string | null;
+    status: string;
+  }>;
+  largeTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    asset: string;
+    timestamp: string;
+    reported: boolean;
+  }>;
+}
+
+export interface ComplianceEvent {
+  id: string;
+  type: string;
+  date: string;
+  merchant: string;
+  amount: number | null;
+  status: string;
+  reportId: string;
+}
+
+export interface ComplianceStats {
+  totalReports: number;
+  thisMonth: number;
+  pending: number;
+  submitted: number;
+}
+
+export interface SystemHealth {
+  overall: string;
+  services: Array<{
+    name: string;
+    status: string;
+    uptime: string;
+    lastCheck: string;
+    details: Record<string, string | number>;
+  }>;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  url: string;
+  event: string;
+  status: string;
+  response_time: string;
   created_at: string;
 }
 
@@ -89,10 +274,31 @@ class ApiService {
 
   // ==================== AUTH ====================
 
-  async register(email: string, password: string, businessName: string) {
-    return this.request<{ token: string; merchant: Merchant }>('/auth/register', {
+  async register(
+    email: string,
+    password: string,
+    businessName: string,
+    extra?: {
+      businessNumber?: string;
+      industry?: string;
+      phone?: string;
+      addressLine1?: string;
+      city?: string;
+      province?: string;
+      postalCode?: string;
+      twoFactorEnabled?: boolean;
+      settlementMode?: 'cad' | 'crypto';
+      settlementAssets?: string[];
+      bankName?: string;
+      bankTransit?: string;
+      bankInstitution?: string;
+      bankAccount?: string;
+      notifications?: NotificationSettings;
+    }
+  ) {
+    return this.request<{ token: string; merchant: MerchantProfile }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, businessName }),
+      body: JSON.stringify({ email, password, businessName, ...extra }),
     });
   }
 
@@ -105,6 +311,58 @@ class ApiService {
 
   async getMe() {
     return this.request<{ merchant: Merchant }>('/auth/me');
+  }
+
+  async updateProfile(profile: {
+    businessName?: string;
+    businessNumber?: string;
+    industry?: string;
+    phone?: string;
+    addressLine1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  }) {
+    return this.request<{ merchant: MerchantProfile }>('/merchants/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(profile),
+    });
+  }
+
+  async getSettlement() {
+    return this.request<SettlementPreferences>('/merchants/settlement');
+  }
+
+  async updateSettlement(data: SettlementPreferences) {
+    return this.request<{ success: boolean }>('/merchants/settlement', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getNotifications() {
+    return this.request<NotificationSettings>('/notifications');
+  }
+
+  async updateNotifications(data: NotificationSettings) {
+    return this.request<{ success: boolean }>('/notifications', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePassword(currentPassword: string, newPassword: string) {
+    return this.request<{ success: boolean }>('/security/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
+  async updateTwoFactor(enabled: boolean) {
+    return this.request<{ success: boolean; enabled: boolean }>('/security/2fa', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    });
   }
 
   // ==================== PAYMENTS ====================
@@ -150,17 +408,17 @@ class ApiService {
     return this.request<{ assets: Array<{ asset: string; balance: number; cad_value: number; rate: number }> }>('/assets/balances');
   }
 
+  async convertAsset(asset: string, cryptoAmount: number) {
+    return this.request<Payout>('/assets/convert', {
+      method: 'POST',
+      body: JSON.stringify({ asset, cryptoAmount }),
+    });
+  }
+
   // ==================== PAYOUTS ====================
 
   async getPayouts() {
-    return this.request<Array<{
-      id: string;
-      payment_id: string;
-      amount: number;
-      asset: string;
-      created_at: string;
-      description?: string;
-    }>>('/payouts');
+    return this.request<Payout[]>('/payouts');
   }
 
   // ==================== API KEYS ====================
@@ -194,6 +452,83 @@ class ApiService {
     });
   }
 
+  // ==================== WEBHOOKS ====================
+
+  async getWebhooks() {
+    return this.request<Webhook[]>('/webhooks');
+  }
+
+  async createWebhook(url: string, events: string[]) {
+    return this.request<Webhook>('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify({ url, events }),
+    });
+  }
+
+  async updateWebhook(id: string, data: Partial<Webhook>) {
+    return this.request<Webhook>(`/webhooks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteWebhook(id: string) {
+    return this.request<{ success: boolean }>(`/webhooks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async testWebhook(id: string) {
+    return this.request<{ success: boolean }>(`/webhooks/${id}/test`, {
+      method: 'POST',
+    });
+  }
+
+  // ==================== TEAM ====================
+
+  async getTeamMembers() {
+    return this.request<TeamMember[]>('/team');
+  }
+
+  async inviteTeamMember(name: string | undefined, email: string, role: string) {
+    return this.request<TeamMember>('/team', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, role }),
+    });
+  }
+
+  async updateTeamMember(id: string, data: { role?: string; status?: string }) {
+    return this.request<TeamMember>(`/team/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removeTeamMember(id: string) {
+    return this.request<{ success: boolean }>(`/team/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== KYC ====================
+
+  async getKycDocuments() {
+    return this.request<KycDocument[]>('/kyc/documents');
+  }
+
+  async uploadKycDocument(payload: { documentType: string; name: string; fileName: string; mimeType: string; data: string }) {
+    return this.request<KycDocument>('/kyc/documents', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // ==================== COMPLIANCE ====================
+
+  async getComplianceLogs() {
+    return this.request<ComplianceLogs>('/compliance/logs');
+  }
+
   // ==================== ADMIN ====================
 
   async getMerchants() {
@@ -213,10 +548,20 @@ class ApiService {
       id: string;
       email: string;
       business_name: string;
+      business_number?: string;
+      industry?: string;
+      phone?: string;
+      address_line1?: string;
+      city?: string;
+      province?: string;
+      postal_code?: string;
       kyc_status: string;
       created_at: string;
       total_volume: number;
       transaction_count: number;
+      beneficialOwners?: Array<{ name: string; role: string; ownership: string; verified: boolean }>;
+      documents?: Array<{ name: string; type: string; status: string; uploadDate: string }>;
+      notes?: Array<{ author: string; text: string; date: string }>;
     }>(`/admin/merchants/${id}`);
   }
 
@@ -227,16 +572,34 @@ class ApiService {
     });
   }
 
-  // ==================== COMPLIANCE ====================
+  async addMerchantNote(merchantId: string, text: string) {
+    return this.request<{ author: string; text: string; date: string }>(`/admin/merchants/${merchantId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
 
-  async getComplianceLogs() {
-    return this.request<Array<any>>('/compliance/logs');
+  // ==================== ADMIN MONITORING ====================
+
+  async getAdminMonitoring() {
+    return this.request<AdminMonitoringResponse>('/admin/transactions/monitoring');
+  }
+
+  async getAdminComplianceEvents() {
+    return this.request<ComplianceEvent[]>('/admin/compliance/events');
+  }
+
+  async getAdminComplianceStats() {
+    return this.request<ComplianceStats>('/admin/compliance/stats');
+  }
+
+  async getAdminSystemHealth() {
+    return this.request<SystemHealth>('/admin/system-health');
+  }
+
+  async getAdminWebhookDeliveries() {
+    return this.request<WebhookDelivery[]>('/admin/webhook-deliveries');
   }
 }
 
 export const api = new ApiService();
-
-
-
-
-

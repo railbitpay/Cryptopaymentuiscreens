@@ -24,6 +24,12 @@ export function POSModeView() {
     { id: 'SOL' as CryptoAsset, name: 'Solana', icon: Wallet, color: 'green', rate: 0.045 }
   ];
 
+  const colorClasses: Record<string, { bg: string; text: string; textStrong: string; border: string }> = {
+    orange: { bg: 'bg-orange-100', text: 'text-orange-600', textStrong: 'text-orange-800', border: 'border-orange-200' },
+    purple: { bg: 'bg-purple-100', text: 'text-purple-600', textStrong: 'text-purple-800', border: 'border-purple-200' },
+    green: { bg: 'bg-green-100', text: 'text-green-600', textStrong: 'text-green-800', border: 'border-green-200' }
+  };
+
   const handleNumberClick = (num: string) => {
     if (num === 'C') {
       setAmount('');
@@ -54,25 +60,6 @@ export function POSModeView() {
         setPaymentStatus('pending');
         setCountdown(Math.max(0, Math.floor((new Date(newPayment.expires_at).getTime() - Date.now()) / 1000)));
         
-        // Poll for payment status
-        const pollInterval = setInterval(async () => {
-          try {
-            const updatedPayment = await api.getPayment(newPayment.id);
-            if (updatedPayment.status === 'paid') {
-              setPayment(updatedPayment);
-              setPaymentStatus('success');
-              clearInterval(pollInterval);
-            } else if (new Date(updatedPayment.expires_at) < new Date()) {
-              setPaymentStatus('failed');
-              clearInterval(pollInterval);
-            }
-          } catch (err) {
-            console.error('Polling error:', err);
-          }
-        }, 3000);
-
-        // Clear interval when component unmounts or payment completes
-        return () => clearInterval(pollInterval);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create payment');
         setPaymentStatus('failed');
@@ -96,17 +83,29 @@ export function POSModeView() {
     }
   }, [paymentStatus, countdown]);
 
+  useEffect(() => {
+    if (paymentStatus !== 'pending' || !payment) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const updatedPayment = await api.getPayment(payment.id);
+        if (updatedPayment.status === 'paid') {
+          setPayment(updatedPayment);
+          setPaymentStatus('success');
+        } else if (new Date(updatedPayment.expires_at) < new Date()) {
+          setPaymentStatus('failed');
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 3000);
+    return () => clearInterval(pollInterval);
+  }, [paymentStatus, payment?.id]);
+
   const handleReset = () => {
     setAmount('');
     setSelectedAsset(null);
     setPaymentStatus('idle');
     setCountdown(900);
-  };
-
-  const getCryptoAmount = (asset: CryptoAsset) => {
-    const selected = assets.find(a => a.id === asset);
-    if (!selected || !amount) return '0';
-    return (parseFloat(amount) * selected.rate).toFixed(8);
   };
 
   if (paymentStatus === 'creating') {
@@ -186,7 +185,7 @@ export function POSModeView() {
                   includeMargin={false}
                 />
               </div>
-              <Badge className={`bg-${asset.color}-100 text-${asset.color}-800 border-${asset.color}-200`}>
+              <Badge className={`${colorClasses[asset.color].bg} ${colorClasses[asset.color].textStrong} ${colorClasses[asset.color].border}`}>
                 <Icon className="w-4 h-4 mr-2" />
                 {asset.name}
               </Badge>
@@ -291,8 +290,8 @@ export function POSModeView() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 bg-${asset.color}-100 rounded-full flex items-center justify-center`}>
-                        <Icon className={`w-6 h-6 text-${asset.color}-600`} />
+                      <div className={`w-12 h-12 ${colorClasses[asset.color].bg} rounded-full flex items-center justify-center`}>
+                        <Icon className={`w-6 h-6 ${colorClasses[asset.color].text}`} />
                       </div>
                       <div>
                         <p className="text-gray-900">{asset.name}</p>

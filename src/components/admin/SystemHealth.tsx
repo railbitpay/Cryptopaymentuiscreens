@@ -1,102 +1,46 @@
-import { Server, Zap, Wifi, Database, CheckCircle2, AlertCircle, Activity } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Server, Wifi, Database, CheckCircle2, AlertCircle, Activity, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { api, SystemHealth as SystemHealthType, WebhookDelivery } from '../../services/api';
+
+const serviceIconMap: Record<string, any> = {
+  Database,
+  'API Server': Server,
+  Webhooks: Wifi
+};
 
 export function SystemHealth() {
-  const services = [
-    {
-      name: 'Lightning Network Node',
-      status: 'operational',
-      uptime: '99.98%',
-      lastCheck: '2 minutes ago',
-      icon: Zap,
-      color: 'orange',
-      details: {
-        channels: 45,
-        capacity: '5.2 BTC',
-        peers: 23
-      }
-    },
-    {
-      name: 'Ethereum RPC',
-      status: 'operational',
-      uptime: '99.95%',
-      lastCheck: '1 minute ago',
-      icon: Server,
-      color: 'purple',
-      details: {
-        blockHeight: 18500234,
-        syncStatus: 'synced',
-        gasPrice: '25 gwei'
-      }
-    },
-    {
-      name: 'Solana RPC',
-      status: 'operational',
-      uptime: '99.92%',
-      lastCheck: '3 minutes ago',
-      icon: Server,
-      color: 'green',
-      details: {
-        slot: 245123456,
-        tps: 2847,
-        health: 'ok'
-      }
-    },
-    {
-      name: 'Database (PostgreSQL)',
-      status: 'operational',
-      uptime: '100%',
-      lastCheck: '30 seconds ago',
-      icon: Database,
-      color: 'blue',
-      details: {
-        connections: 45,
-        size: '2.3 GB',
-        queries: '1,234/sec'
-      }
-    },
-    {
-      name: 'Webhook Service',
-      status: 'degraded',
-      uptime: '98.5%',
-      lastCheck: '1 minute ago',
-      icon: Wifi,
-      color: 'yellow',
-      details: {
-        queued: 12,
-        processing: 3,
-        failed: 2
-      }
-    }
-  ];
+  const [health, setHealth] = useState<SystemHealthType | null>(null);
+  const [logs, setLogs] = useState<WebhookDelivery[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const webhookLogs = [
-    {
-      id: '1',
-      url: 'https://merchant1.com/webhook',
-      event: 'payment.completed',
-      status: 'success',
-      timestamp: '2025-11-21 14:35:22',
-      responseTime: '245ms'
-    },
-    {
-      id: '2',
-      url: 'https://merchant2.com/webhook',
-      event: 'payment.completed',
-      status: 'failed',
-      timestamp: '2025-11-21 14:34:15',
-      responseTime: 'timeout'
-    },
-    {
-      id: '3',
-      url: 'https://merchant3.com/webhook',
-      event: 'payment.pending',
-      status: 'success',
-      timestamp: '2025-11-21 14:32:08',
-      responseTime: '187ms'
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [healthData, deliveries] = await Promise.all([
+          api.getAdminSystemHealth(),
+          api.getAdminWebhookDeliveries()
+        ]);
+        setHealth(healthData);
+        setLogs(deliveries);
+      } catch (error) {
+        console.error('Failed to fetch system health:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading || !health) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -108,19 +52,23 @@ export function SystemHealth() {
         </div>
 
         {/* Overall Status */}
-        <Card className="p-6 bg-green-50 border-green-200">
+        <Card className={`p-6 ${health.overall === 'operational' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
+            <div className={`w-12 h-12 ${health.overall === 'operational' ? 'bg-green-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center`}>
+              {health.overall === 'operational' ? (
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              ) : (
+                <AlertCircle className="w-6 h-6 text-yellow-600" />
+              )}
             </div>
             <div className="flex-1">
-              <h3 className="text-gray-900">All Systems Operational</h3>
+              <h3 className="text-gray-900">{health.overall === 'operational' ? 'All Systems Operational' : 'Degraded Performance'}</h3>
               <p className="text-sm text-gray-600 mt-1">
-                4 of 5 services running normally • 1 degraded performance
+                {health.services.length} services monitored
               </p>
             </div>
-            <Badge className="bg-green-100 text-green-800 border-green-200">
-              99.96% Uptime
+            <Badge className={health.overall === 'operational' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
+              {health.overall.toUpperCase()}
             </Badge>
           </div>
         </Card>
@@ -129,15 +77,14 @@ export function SystemHealth() {
         <div>
           <h2 className="text-gray-900 mb-4">Service Status</h2>
           <div className="space-y-4">
-            {services.map((service) => {
-              const Icon = service.icon;
+            {health.services.map((service) => {
+              const Icon = serviceIconMap[service.name] || Server;
               const isOperational = service.status === 'operational';
-              
               return (
                 <Card key={service.name} className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 bg-${service.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <Icon className={`w-6 h-6 text-${service.color}-600`} />
+                    <div className={`w-12 h-12 ${isOperational ? 'bg-green-100' : 'bg-yellow-100'} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                      <Icon className={`w-6 h-6 ${isOperational ? 'text-green-600' : 'text-yellow-600'}`} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
@@ -157,7 +104,7 @@ export function SystemHealth() {
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-4">
-                        Last checked: {service.lastCheck}
+                        Last checked: {new Date(service.lastCheck).toLocaleString()}
                       </p>
                       <div className="grid grid-cols-3 gap-4">
                         {Object.entries(service.details).map(([key, value]) => (
@@ -191,25 +138,31 @@ export function SystemHealth() {
                   </tr>
                 </thead>
                 <tbody>
-                  {webhookLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 text-sm text-gray-600">{log.timestamp}</td>
-                      <td className="py-4 px-4 text-sm text-gray-900 font-mono text-xs">{log.url}</td>
-                      <td className="py-4 px-4">
-                        <Badge variant="outline">{log.event}</Badge>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-600">{log.responseTime}</td>
-                      <td className="py-4 px-4">
-                        <Badge className={
-                          log.status === 'success'
-                            ? 'bg-green-100 text-green-800 border-green-200'
-                            : 'bg-red-100 text-red-800 border-red-200'
-                        }>
-                          {log.status.toUpperCase()}
-                        </Badge>
-                      </td>
+                  {logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-600">No deliveries yet</td>
                     </tr>
-                  ))}
+                  ) : (
+                    logs.map((log) => (
+                      <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-4 text-sm text-gray-600">{new Date(log.created_at).toLocaleString()}</td>
+                        <td className="py-4 px-4 text-sm text-gray-900 font-mono text-xs">{log.url}</td>
+                        <td className="py-4 px-4">
+                          <Badge variant="outline">{log.event}</Badge>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-600">{log.response_time}</td>
+                        <td className="py-4 px-4">
+                          <Badge className={
+                            log.status === 'success'
+                              ? 'bg-green-100 text-green-800 border-green-200'
+                              : 'bg-red-100 text-red-800 border-red-200'
+                          }>
+                            {log.status.toUpperCase()}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -223,24 +176,24 @@ export function SystemHealth() {
               <p className="text-sm text-gray-600">API Response Time</p>
               <Activity className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-2xl text-gray-900">245ms</p>
-            <p className="text-xs text-gray-500 mt-1">Average last hour</p>
+            <p className="text-2xl text-gray-900">—</p>
+            <p className="text-xs text-gray-500 mt-1">Real-time metrics not configured</p>
           </Card>
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-600">Active Connections</p>
               <Wifi className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-2xl text-gray-900">342</p>
-            <p className="text-xs text-gray-500 mt-1">Current</p>
+            <p className="text-2xl text-gray-900">—</p>
+            <p className="text-xs text-gray-500 mt-1">Real-time metrics not configured</p>
           </Card>
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-600">Error Rate</p>
               <AlertCircle className="w-5 h-5 text-orange-600" />
             </div>
-            <p className="text-2xl text-gray-900">0.02%</p>
-            <p className="text-xs text-gray-500 mt-1">Last 24 hours</p>
+            <p className="text-2xl text-gray-900">—</p>
+            <p className="text-xs text-gray-500 mt-1">Real-time metrics not configured</p>
           </Card>
         </div>
       </div>

@@ -16,6 +16,8 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
   const [merchant, setMerchant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
   useEffect(() => {
     const fetchMerchant = async () => {
@@ -72,6 +74,22 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
       alert('Failed to update KYC status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!merchant) return;
+    const text = prompt('Enter admin note');
+    if (!text) return;
+    try {
+      setNoteSubmitting(true);
+      const newNote = await api.addMerchantNote(merchantId, text);
+      setMerchant({ ...merchant, notes: [newNote, ...(merchant.notes || [])] });
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      alert('Failed to add note');
+    } finally {
+      setNoteSubmitting(false);
     }
   };
 
@@ -161,7 +179,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">CRA Business Number</label>
-                  <p className="text-gray-900 mt-1 font-mono">—</p>
+                  <p className="text-gray-900 mt-1 font-mono">{merchant.business_number || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Email</label>
@@ -169,15 +187,17 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Phone</label>
-                  <p className="text-gray-900 mt-1">—</p>
+                  <p className="text-gray-900 mt-1">{merchant.phone || '—'}</p>
                 </div>
                 <div className="col-span-2">
                   <label className="text-sm text-gray-600">Address</label>
-                  <p className="text-gray-900 mt-1">—</p>
+                  <p className="text-gray-900 mt-1">
+                    {merchant.address_line1 || '—'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Industry</label>
-                  <p className="text-gray-900 mt-1">—</p>
+                  <p className="text-gray-900 mt-1">{merchant.industry || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Join Date</label>
@@ -189,7 +209,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
             <Card className="p-6 mt-6">
               <h3 className="text-gray-900 mb-6">Beneficial Owners</h3>
               <div className="space-y-4">
-                {merchant.beneficialOwners.map((owner, index) => (
+                {(merchant.beneficialOwners || []).map((owner, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-gray-900">{owner.name}</p>
@@ -214,7 +234,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                 <h3 className="text-gray-900">Uploaded Documents</h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {merchant.documents.map((doc, index) => (
+                {(merchant.documents || []).map((doc, index) => (
                   <div key={index} className="p-6 flex items-center justify-between hover:bg-gray-50">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -235,7 +255,11 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                       }>
                         {doc.status.toUpperCase()}
                       </Badge>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(`${apiBase}/admin/kyc/documents/${doc.id}/download`, '_blank')}
+                      >
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </Button>
@@ -276,11 +300,13 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-gray-900">Admin Notes & Activity Log</h3>
-                  <Button variant="outline" size="sm">Add Note</Button>
+                  <Button variant="outline" size="sm" onClick={handleAddNote} disabled={noteSubmitting}>
+                    {noteSubmitting ? 'Saving...' : 'Add Note'}
+                  </Button>
                 </div>
               </div>
               <div className="divide-y divide-gray-200">
-                {merchant.notes.map((note, index) => (
+                {(merchant.notes || []).map((note, index) => (
                   <div key={index} className="p-6">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Key, Webhook, Users, Shield, Bell, Loader2, Copy, CheckCircle2, Trash2 } from 'lucide-react';
+import { Key, Shield, Loader2, Copy, CheckCircle2, Trash2, Plus } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,7 +7,7 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
-import { api } from '../../services/api';
+import { api, NotificationSettings, Webhook as WebhookType, TeamMember } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Dialog,
@@ -18,6 +18,12 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 
+const webhookEventOptions = [
+  'payment.completed',
+  'payment.failed',
+  'payment.pending'
+];
+
 export function SettingsView() {
   const { user } = useAuth();
   const [apiKeys, setApiKeys] = useState<any[]>([]);
@@ -27,20 +33,81 @@ export function SettingsView() {
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
+  const [profile, setProfile] = useState({
+    businessName: '',
+    businessNumber: '',
+    industry: '',
+    email: '',
+    phone: '',
+    addressLine1: '',
+    city: '',
+    province: '',
+    postalCode: ''
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  const [webhooks, setWebhooks] = useState<WebhookType[]>([]);
+  const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookEvents, setWebhookEvents] = useState<string[]>([]);
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('Member');
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(!!user?.two_factor_enabled);
+  const [passwordCurrent, setPasswordCurrent] = useState('');
+  const [passwordNew, setPasswordNew] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    payment_received: true,
+    payment_failed: true,
+    weekly_summary: true,
+    compliance_alerts: true,
+    marketing_updates: false
+  });
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
+
   useEffect(() => {
-    const fetchApiKeys = async () => {
+    const fetchSettings = async () => {
       try {
         setLoading(true);
-        const keys = await api.getApiKeys();
+        const [keys, me, hookList, team, notif] = await Promise.all([
+          api.getApiKeys(),
+          api.getMe(),
+          api.getWebhooks(),
+          api.getTeamMembers(),
+          api.getNotifications()
+        ]);
         setApiKeys(keys);
+        setWebhooks(hookList);
+        setTeamMembers(team);
+        setNotifications(notif);
+        setTwoFactorEnabled(!!me.merchant.two_factor_enabled);
+        setProfile({
+          businessName: me.merchant.business_name || '',
+          businessNumber: me.merchant.business_number || '',
+          industry: me.merchant.industry || '',
+          email: me.merchant.email || '',
+          phone: me.merchant.phone || '',
+          addressLine1: me.merchant.address_line1 || '',
+          city: me.merchant.city || '',
+          province: me.merchant.province || '',
+          postalCode: me.merchant.postal_code || ''
+        });
       } catch (error) {
-        console.error('Failed to fetch API keys:', error);
+        console.error('Failed to fetch settings:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchApiKeys();
-  }, []);
+    fetchSettings();
+  }, [user?.two_factor_enabled]);
 
   const handleCreateKey = async () => {
     try {
@@ -84,32 +151,132 @@ export function SettingsView() {
     setRevealedKeys(newRevealed);
   };
 
-  const webhooks = [
-    {
-      id: '1',
-      url: 'https://example.com/webhook',
-      events: ['payment.completed', 'payment.failed'],
-      status: 'active',
-      lastDelivery: '2025-11-20'
+  const handleSaveProfile = async () => {
+    try {
+      setProfileSaving(true);
+      const result = await api.updateProfile({
+        businessName: profile.businessName,
+        businessNumber: profile.businessNumber,
+        industry: profile.industry,
+        phone: profile.phone,
+        addressLine1: profile.addressLine1,
+        city: profile.city,
+        province: profile.province,
+        postalCode: profile.postalCode
+      });
+      setProfile(prev => ({ ...prev, businessName: result.merchant.business_name || prev.businessName }));
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      alert('Failed to update profile');
+    } finally {
+      setProfileSaving(false);
     }
-  ];
+  };
 
-  const teamMembers = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'Owner',
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'Admin',
-      status: 'active'
+  const handleCreateWebhook = async () => {
+    try {
+      const webhook = await api.createWebhook(webhookUrl, webhookEvents);
+      setWebhooks([webhook, ...webhooks]);
+      setWebhookDialogOpen(false);
+      setWebhookUrl('');
+      setWebhookEvents([]);
+    } catch (error) {
+      console.error('Failed to create webhook:', error);
+      alert('Failed to create webhook');
     }
-  ];
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    if (!confirm('Delete this webhook endpoint?')) return;
+    try {
+      await api.deleteWebhook(id);
+      setWebhooks(webhooks.filter(h => h.id !== id));
+    } catch (error) {
+      console.error('Failed to delete webhook:', error);
+      alert('Failed to delete webhook');
+    }
+  };
+
+  const handleTestWebhook = async (id: string) => {
+    try {
+      await api.testWebhook(id);
+      alert('Test delivery queued');
+    } catch (error) {
+      console.error('Failed to test webhook:', error);
+      alert('Failed to test webhook');
+    }
+  };
+
+  const handleInviteMember = async () => {
+    try {
+      const member = await api.inviteTeamMember(inviteName || undefined, inviteEmail, inviteRole);
+      setTeamMembers([member, ...teamMembers]);
+      setInviteDialogOpen(false);
+      setInviteName('');
+      setInviteEmail('');
+      setInviteRole('Member');
+    } catch (error) {
+      console.error('Failed to invite team member:', error);
+      alert('Failed to invite team member');
+    }
+  };
+
+  const handleRemoveMember = async (id: string) => {
+    if (!confirm('Remove this team member?')) return;
+    try {
+      await api.removeTeamMember(id);
+      setTeamMembers(teamMembers.filter(m => m.id !== id));
+    } catch (error) {
+      console.error('Failed to remove team member:', error);
+      alert('Failed to remove team member');
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    setPasswordError(null);
+    if (!passwordCurrent || !passwordNew) {
+      setPasswordError('Please fill out all password fields');
+      return;
+    }
+    if (passwordNew !== passwordConfirm) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    try {
+      setPasswordSaving(true);
+      await api.updatePassword(passwordCurrent, passwordNew);
+      setPasswordCurrent('');
+      setPasswordNew('');
+      setPasswordConfirm('');
+    } catch (error) {
+      console.error('Failed to update password:', error);
+      setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleToggle2FA = async (enabled: boolean) => {
+    try {
+      setTwoFactorEnabled(enabled);
+      await api.updateTwoFactor(enabled);
+    } catch (error) {
+      console.error('Failed to update 2FA:', error);
+      setTwoFactorEnabled(!enabled);
+    }
+  };
+
+  const handleNotificationsSave = async () => {
+    try {
+      setNotificationsSaving(true);
+      await api.updateNotifications(notifications);
+    } catch (error) {
+      console.error('Failed to update notifications:', error);
+      alert('Failed to update notifications');
+    } finally {
+      setNotificationsSaving(false);
+    }
+  };
 
   return (
     <div className="p-8">
@@ -136,24 +303,46 @@ export function SettingsView() {
               <h3 className="text-gray-900 mb-4">Business Information</h3>
               <div className="space-y-4 max-w-2xl">
                 <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Business Name</Label>
-                  <Input defaultValue={user?.business_name || ''} className="mt-1" />
+                  <div>
+                    <Label>Business Name</Label>
+                    <Input value={profile.businessName} className="mt-1" onChange={(e) => setProfile({ ...profile, businessName: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>CRA Business Number</Label>
+                    <Input value={profile.businessNumber} className="mt-1" onChange={(e) => setProfile({ ...profile, businessNumber: e.target.value })} />
+                  </div>
                 </div>
                 <div>
-                  <Label>CRA Business Number</Label>
-                  <Input defaultValue="" className="mt-1" disabled />
+                  <Label>Email</Label>
+                  <Input type="email" value={profile.email} className="mt-1" disabled />
                 </div>
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input type="email" defaultValue={user?.email || ''} className="mt-1" />
-              </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={profile.phone} className="mt-1" onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Industry</Label>
+                  <Input value={profile.industry} className="mt-1" onChange={(e) => setProfile({ ...profile, industry: e.target.value })} />
+                </div>
                 <div>
                   <Label>Business Address</Label>
-                  <Input defaultValue="123 Main St, Toronto, ON M5V 1A1" className="mt-1" />
+                  <Input value={profile.addressLine1} className="mt-1" onChange={(e) => setProfile({ ...profile, addressLine1: e.target.value })} />
                 </div>
-                <Button>Save Changes</Button>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>City</Label>
+                    <Input value={profile.city} className="mt-1" onChange={(e) => setProfile({ ...profile, city: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Province</Label>
+                    <Input value={profile.province} className="mt-1" onChange={(e) => setProfile({ ...profile, province: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Postal Code</Label>
+                    <Input value={profile.postalCode} className="mt-1" onChange={(e) => setProfile({ ...profile, postalCode: e.target.value })} />
+                  </div>
+                </div>
+                <Button onClick={handleSaveProfile} disabled={profileSaving}>{profileSaving ? 'Saving...' : 'Save Changes'}</Button>
               </div>
             </Card>
           </TabsContent>
@@ -301,40 +490,84 @@ export function SettingsView() {
                   <h3 className="text-gray-900">Webhook Endpoints</h3>
                   <p className="text-sm text-gray-600 mt-1">Receive real-time events via HTTP callbacks</p>
                 </div>
-                <Button>Add Endpoint</Button>
+                <Button onClick={() => setWebhookDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Endpoint
+                </Button>
               </div>
               <div className="divide-y divide-gray-200">
-                {webhooks.map((webhook) => (
-                  <div key={webhook.id} className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="text-sm text-gray-900 font-mono">{webhook.url}</h4>
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            {webhook.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {webhook.events.map((event) => (
-                            <Badge key={event} variant="outline" className="text-xs">
-                              {event}
+                {webhooks.length === 0 ? (
+                  <div className="p-6 text-sm text-gray-600">No webhooks configured</div>
+                ) : (
+                  webhooks.map((webhook) => (
+                    <div key={webhook.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-sm text-gray-900 font-mono">{webhook.url}</h4>
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              {webhook.status.toUpperCase()}
                             </Badge>
-                          ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {webhook.events.map((event) => (
+                              <Badge key={event} variant="outline" className="text-xs">
+                                {event}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Last delivery: {webhook.last_delivery ? new Date(webhook.last_delivery).toLocaleString() : '—'}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-600">
-                          Last delivery: {webhook.lastDelivery}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button variant="outline" size="sm">Test</Button>
-                        <Button variant="outline" size="sm">Edit</Button>
-                        <Button variant="destructive" size="sm">Delete</Button>
+                        <div className="flex gap-2 ml-4">
+                          <Button variant="outline" size="sm" onClick={() => handleTestWebhook(webhook.id)}>Test</Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteWebhook(webhook.id)}>Delete</Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
+
+            <Dialog open={webhookDialogOpen} onOpenChange={setWebhookDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Webhook Endpoint</DialogTitle>
+                  <DialogDescription>
+                    Configure an endpoint to receive event notifications
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div>
+                    <Label>Webhook URL</Label>
+                    <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://example.com/webhook" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>Events</Label>
+                    <div className="mt-2 space-y-2">
+                      {webhookEventOptions.map((event) => (
+                        <label key={event} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={webhookEvents.includes(event)}
+                            onChange={(e) => {
+                              setWebhookEvents(prev => e.target.checked ? [...prev, event] : prev.filter(v => v !== event));
+                            }}
+                          />
+                          <span>{event}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setWebhookDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleCreateWebhook} disabled={!webhookUrl || webhookEvents.length === 0}>Create</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Team */}
@@ -345,7 +578,7 @@ export function SettingsView() {
                   <h3 className="text-gray-900">Team Members</h3>
                   <p className="text-sm text-gray-600 mt-1">Manage who has access to your account</p>
                 </div>
-                <Button>Invite Member</Button>
+                <Button onClick={() => setInviteDialogOpen(true)}>Invite Member</Button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -359,31 +592,66 @@ export function SettingsView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {teamMembers.map((member) => (
-                      <tr key={member.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4 text-sm text-gray-900">{member.name}</td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{member.email}</td>
-                        <td className="py-4 px-4">
-                          <Badge variant={member.role === 'Owner' ? 'default' : 'outline'}>
-                            {member.role}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            {member.status.toUpperCase()}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          {member.role !== 'Owner' && (
-                            <Button variant="ghost" size="sm">Remove</Button>
-                          )}
-                        </td>
+                    {teamMembers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-600">No team members yet</td>
                       </tr>
-                    ))}
+                    ) : (
+                      teamMembers.map((member) => (
+                        <tr key={member.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4 text-sm text-gray-900">{member.name || '—'}</td>
+                          <td className="py-4 px-4 text-sm text-gray-600">{member.email}</td>
+                          <td className="py-4 px-4">
+                            <Badge variant={member.role === 'Owner' ? 'default' : 'outline'}>
+                              {member.role}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              {member.status.toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            {member.role !== 'Owner' && (
+                              <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)}>Remove</Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </Card>
+
+            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invite Team Member</DialogTitle>
+                  <DialogDescription>
+                    Send an invitation to join your organization
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div>
+                    <Label>Name</Label>
+                    <Input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@company.com" />
+                  </div>
+                  <div>
+                    <Label>Role</Label>
+                    <Input value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Admin" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleInviteMember} disabled={!inviteEmail}>Send Invite</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Security */}
@@ -396,11 +664,11 @@ export function SettingsView() {
                     <Shield className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-900">2FA is enabled</p>
-                    <p className="text-xs text-gray-600">Your account is protected with authenticator app</p>
+                    <p className="text-sm text-gray-900">2FA is {twoFactorEnabled ? 'enabled' : 'disabled'}</p>
+                    <p className="text-xs text-gray-600">Toggle to update your security settings</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">Manage</Button>
+                <Switch checked={twoFactorEnabled} onCheckedChange={handleToggle2FA} />
               </div>
             </Card>
 
@@ -409,17 +677,18 @@ export function SettingsView() {
               <div className="space-y-4 max-w-md">
                 <div>
                   <Label>Current Password</Label>
-                  <Input type="password" className="mt-1" />
+                  <Input type="password" className="mt-1" value={passwordCurrent} onChange={(e) => setPasswordCurrent(e.target.value)} />
                 </div>
                 <div>
                   <Label>New Password</Label>
-                  <Input type="password" className="mt-1" />
+                  <Input type="password" className="mt-1" value={passwordNew} onChange={(e) => setPasswordNew(e.target.value)} />
                 </div>
                 <div>
                   <Label>Confirm New Password</Label>
-                  <Input type="password" className="mt-1" />
+                  <Input type="password" className="mt-1" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
                 </div>
-                <Button>Update Password</Button>
+                {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+                <Button onClick={handlePasswordUpdate} disabled={passwordSaving}>{passwordSaving ? 'Updating...' : 'Update Password'}</Button>
               </div>
             </Card>
           </TabsContent>
@@ -434,36 +703,56 @@ export function SettingsView() {
                     <p className="text-sm text-gray-900">Payment Received</p>
                     <p className="text-xs text-gray-600">Get notified when a payment is completed</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={notifications.payment_received}
+                    onCheckedChange={(checked) => setNotifications({ ...notifications, payment_received: checked })}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-gray-200">
                   <div>
                     <p className="text-sm text-gray-900">Payment Failed</p>
                     <p className="text-xs text-gray-600">Get notified when a payment fails</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={notifications.payment_failed}
+                    onCheckedChange={(checked) => setNotifications({ ...notifications, payment_failed: checked })}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-gray-200">
                   <div>
                     <p className="text-sm text-gray-900">Weekly Summary</p>
                     <p className="text-xs text-gray-600">Receive weekly transaction summaries</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={notifications.weekly_summary}
+                    onCheckedChange={(checked) => setNotifications({ ...notifications, weekly_summary: checked })}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-3 border-b border-gray-200">
                   <div>
                     <p className="text-sm text-gray-900">Compliance Alerts</p>
                     <p className="text-xs text-gray-600">Important regulatory and KYC updates</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={notifications.compliance_alerts}
+                    onCheckedChange={(checked) => setNotifications({ ...notifications, compliance_alerts: checked })}
+                  />
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm text-gray-900">Marketing Updates</p>
                     <p className="text-xs text-gray-600">News and product announcements</p>
                   </div>
-                  <Switch />
+                  <Switch
+                    checked={notifications.marketing_updates}
+                    onCheckedChange={(checked) => setNotifications({ ...notifications, marketing_updates: checked })}
+                  />
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button onClick={handleNotificationsSave} disabled={notificationsSaving}>
+                  {notificationsSaving ? 'Saving...' : 'Save Notification Settings'}
+                </Button>
               </div>
             </Card>
           </TabsContent>

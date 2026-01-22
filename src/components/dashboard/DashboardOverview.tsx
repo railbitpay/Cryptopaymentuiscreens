@@ -69,7 +69,7 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
     {
       label: 'Total Volume (CAD)',
       value: `$${stats.total_volume.toFixed(2)}`,
-      change: stats.paid_volume > 0 ? `${((stats.paid_volume / stats.total_volume) * 100).toFixed(1)}% paid` : '0%',
+      change: stats.total_volume > 0 ? `${((stats.paid_volume / stats.total_volume) * 100).toFixed(1)}% paid` : '0% paid',
       trend: 'up' as const,
       icon: DollarSign,
       color: 'green'
