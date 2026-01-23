@@ -17,7 +17,13 @@ export function PaymentsView() {
     const fetchPayments = async () => {
       try {
         const data = await api.getPayments();
-        setPayments(data);
+        setPayments(
+          data.map((p) => ({
+            ...p,
+            amount_cad: Number(p.amount_cad) || 0,
+            crypto_amount: Number(p.crypto_amount) || 0
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch payments:', error);
       } finally {

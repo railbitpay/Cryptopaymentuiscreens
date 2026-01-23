@@ -32,7 +32,13 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
           api.getPayments()
         ]);
         setStats(statsData);
-        setRecentPayments(paymentsData.slice(0, 4));
+        setRecentPayments(
+          paymentsData.slice(0, 4).map(p => ({
+            ...p,
+            amount_cad: Number(p.amount_cad) || 0,
+            crypto_amount: Number(p.crypto_amount) || 0
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         // If auth fails, clear user

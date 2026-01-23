@@ -563,6 +563,23 @@ const dbRun = async (query, params = []) => {
   }
 };
 
+const normalizePayment = (payment) => {
+  if (!payment) return payment;
+  return {
+    ...payment,
+    amount_cad: parseFloat(payment.amount_cad) || 0,
+    crypto_amount: parseFloat(payment.crypto_amount) || 0
+  };
+};
+
+const normalizeTransaction = (tx) => {
+  if (!tx) return tx;
+  return {
+    ...tx,
+    amount: parseFloat(tx.amount) || 0
+  };
+};
+
 // ==================== AUTH ROUTES ====================
 
 app.post('/api/auth/register', async (req, res) => {
@@ -1034,7 +1051,7 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
       [paymentId, req.user.id, amount_cad, asset, cryptoAmount, addresses[asset], description || null, expiresAt]
     );
 
-    const payment = await dbGet('SELECT * FROM payments WHERE id = ?', [paymentId]);
+    const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [paymentId]));
     
     // Emit WebSocket event
     io.emit('payment:created', { paymentId, merchantId: req.user.id, payment });
@@ -1059,7 +1076,7 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
       'SELECT * FROM payments WHERE merchant_id = ? ORDER BY created_at DESC LIMIT 100',
       [req.user.id]
     );
-    res.json(payments);
+    res.json(payments.map(normalizePayment));
   } catch (error) {
     console.error('Get payments error:', error);
     res.status(500).json({ error: 'Failed to fetch payments' });
@@ -1068,7 +1085,7 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
 
 app.get('/api/payments/:id', async (req, res) => {
   try {
-    const payment = await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
     
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
@@ -1083,7 +1100,7 @@ app.get('/api/payments/:id', async (req, res) => {
 
 app.post('/api/payments/:id/verify', async (req, res) => {
   try {
-    const payment = await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
     
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
@@ -1104,7 +1121,7 @@ app.post('/api/payments/:id/verify', async (req, res) => {
       [transactionId, req.params.id, payment.merchant_id, payment.amount_cad, payment.asset]
     );
 
-    const updatedPayment = await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    const updatedPayment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
     
     // Emit WebSocket event
     io.emit('payment:paid', { paymentId: req.params.id, payment: updatedPayment });
@@ -1247,7 +1264,7 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
        LIMIT 100`,
       [req.user.id]
     );
-    res.json(transactions);
+    res.json(transactions.map(normalizeTransaction));
   } catch (error) {
     console.error('Get transactions error:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
@@ -1372,7 +1389,13 @@ app.get('/api/payouts', authenticateToken, async (req, res) => {
       [req.user.id]
     );
 
-    res.json(payouts);
+    res.json(
+      payouts.map(p => ({
+        ...p,
+        amount: parseFloat(p.amount) || 0,
+        crypto_amount: parseFloat(p.crypto_amount) || 0
+      }))
+    );
   } catch (error) {
     console.error('Get payouts error:', error);
     res.status(500).json({ error: 'Failed to fetch payouts' });
@@ -1766,20 +1789,20 @@ app.get('/api/admin/transactions/monitoring', authenticateToken, isAdmin, async 
     const recentWithFlags = recent.map(tx => ({
       id: tx.id,
       merchantName: tx.merchant_name || 'Unknown',
-      amount: tx.crypto_amount,
+      amount: parseFloat(tx.crypto_amount) || 0,
       asset: tx.asset.toUpperCase(),
-      cadValue: tx.amount_cad,
+      cadValue: parseFloat(tx.amount_cad) || 0,
       timestamp: tx.created_at,
-      flag: tx.amount_cad >= 10000 ? 'large-transaction' : (velocitySet.has(tx.merchant_id) ? 'velocity' : null),
+      flag: parseFloat(tx.amount_cad) >= 10000 ? 'large-transaction' : (velocitySet.has(tx.merchant_id) ? 'velocity' : null),
       status: tx.status
     }));
 
     const largeTransactions = recent
-      .filter(tx => tx.amount_cad >= 10000)
+      .filter(tx => parseFloat(tx.amount_cad) >= 10000)
       .map(tx => ({
         id: tx.id,
         merchantName: tx.merchant_name || 'Unknown',
-        amount: tx.amount_cad,
+        amount: parseFloat(tx.amount_cad) || 0,
         asset: tx.asset.toUpperCase(),
         timestamp: tx.created_at,
         reported: true
@@ -1788,8 +1811,8 @@ app.get('/api/admin/transactions/monitoring', authenticateToken, isAdmin, async 
     res.json({
       stats: {
         totalToday: parseFloat(stats.total_today) || 0,
-        countToday: stats.count_today || 0,
-        largeTransactions: stats.large_transactions || 0,
+        countToday: Number(stats.count_today) || 0,
+        largeTransactions: Number(stats.large_transactions) || 0,
         suspiciousPatterns: velocitySet.size
       },
       recentTransactions: recentWithFlags,
@@ -1824,7 +1847,7 @@ app.get('/api/admin/compliance/events', authenticateToken, isAdmin, async (req, 
         type: 'Large Virtual Currency Transaction Report',
         date: dateStamp,
         merchant: event.merchant_name || 'Unknown',
-        amount: event.amount_cad,
+        amount: parseFloat(event.amount_cad) || 0,
         status: 'submitted',
         reportId: `LVCTR-${dateStamp.replace(/-/g, '')}-${event.id.slice(-4).toUpperCase()}`
       };
@@ -1851,10 +1874,10 @@ app.get('/api/admin/compliance/stats', authenticateToken, isAdmin, async (req, r
       []
     );
     res.json({
-      totalReports: total.total_reports || 0,
-      thisMonth: monthly.month_reports || 0,
+      totalReports: Number(total.total_reports) || 0,
+      thisMonth: Number(monthly.month_reports) || 0,
       pending: 0,
-      submitted: total.total_reports || 0
+      submitted: Number(total.total_reports) || 0
     });
   } catch (error) {
     console.error('Compliance stats error:', error);

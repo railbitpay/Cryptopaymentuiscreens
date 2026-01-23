@@ -55,10 +55,15 @@ export function POSModeView() {
         const assetLower = asset.toLowerCase() as 'btc' | 'eth' | 'sol';
         
         const newPayment = await api.createPayment(amountNum, assetLower, `POS Payment - $${amount}`);
-        setPayment(newPayment);
+        const normalized = {
+          ...newPayment,
+          amount_cad: Number(newPayment.amount_cad) || 0,
+          crypto_amount: Number(newPayment.crypto_amount) || 0
+        };
+        setPayment(normalized);
         setSelectedAsset(asset);
         setPaymentStatus('pending');
-        setCountdown(Math.max(0, Math.floor((new Date(newPayment.expires_at).getTime() - Date.now()) / 1000)));
+        setCountdown(Math.max(0, Math.floor((new Date(normalized.expires_at).getTime() - Date.now()) / 1000)));
         
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create payment');
@@ -88,10 +93,15 @@ export function POSModeView() {
     const pollInterval = setInterval(async () => {
       try {
         const updatedPayment = await api.getPayment(payment.id);
-        if (updatedPayment.status === 'paid') {
-          setPayment(updatedPayment);
+        const normalized = {
+          ...updatedPayment,
+          amount_cad: Number(updatedPayment.amount_cad) || 0,
+          crypto_amount: Number(updatedPayment.crypto_amount) || 0
+        };
+        if (normalized.status === 'paid') {
+          setPayment(normalized);
           setPaymentStatus('success');
-        } else if (new Date(updatedPayment.expires_at) < new Date()) {
+        } else if (new Date(normalized.expires_at) < new Date()) {
           setPaymentStatus('failed');
         }
       } catch (err) {

@@ -38,16 +38,21 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
     const fetchPayment = async () => {
       try {
         const paymentData = await api.getPayment(paymentId);
-        setPayment(paymentData);
+        const normalized = {
+          ...paymentData,
+          amount_cad: Number(paymentData.amount_cad) || 0,
+          crypto_amount: Number(paymentData.crypto_amount) || 0
+        };
+        setPayment(normalized);
         
         // Check if payment is already paid or expired
-        if (paymentData.status === 'paid') {
+        if (normalized.status === 'paid') {
           setPaymentStep('success');
           // Determine asset from payment data
           const assetMap: Record<string, CryptoAsset> = { btc: 'BTC', eth: 'ETH', sol: 'SOL' };
-          setSelectedAsset(assetMap[paymentData.asset] || 'BTC');
+          setSelectedAsset(assetMap[normalized.asset] || 'BTC');
         } else {
-          const expiresAt = new Date(paymentData.expires_at);
+          const expiresAt = new Date(normalized.expires_at);
           const now = new Date();
           if (expiresAt < now) {
             setPaymentStep('expired');
@@ -73,9 +78,14 @@ export function CustomerPayment({ paymentId, onNavigate }: CustomerPaymentProps)
       const pollInterval = setInterval(async () => {
         try {
           const paymentData = await api.getPayment(paymentId);
-          setPayment(paymentData);
+          const normalized = {
+            ...paymentData,
+            amount_cad: Number(paymentData.amount_cad) || 0,
+            crypto_amount: Number(paymentData.crypto_amount) || 0
+          };
+          setPayment(normalized);
           
-          if (paymentData.status === 'paid') {
+          if (normalized.status === 'paid') {
             setPaymentStep('success');
             clearInterval(pollInterval);
           }

@@ -31,7 +31,11 @@ export function CreatePaymentView() {
       }
 
       const newPayment = await api.createPayment(amountNum, asset, description || undefined);
-      setPayment(newPayment);
+      setPayment({
+        ...newPayment,
+        amount_cad: Number(newPayment.amount_cad) || 0,
+        crypto_amount: Number(newPayment.crypto_amount) || 0
+      });
       setPaymentCreated(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create payment');
@@ -67,6 +71,8 @@ export function CreatePaymentView() {
 
   if (paymentCreated && payment) {
     const timeRemaining = formatTimeRemaining(payment.expires_at);
+    const amountCad = Number(payment.amount_cad) || 0;
+    const cryptoAmount = Number(payment.crypto_amount) || 0;
     
     return (
       <div className="p-8 max-w-3xl mx-auto">
@@ -90,7 +96,7 @@ export function CreatePaymentView() {
               />
             </div>
             <div className="text-center mt-4">
-              <p className="text-2xl text-gray-900 mb-1">${payment.amount_cad.toFixed(2)} CAD</p>
+              <p className="text-2xl text-gray-900 mb-1">${amountCad.toFixed(2)} CAD</p>
               <p className="text-sm text-gray-600">{payment.description || 'No description'}</p>
             </div>
           </div>
@@ -138,11 +144,11 @@ export function CreatePaymentView() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount</span>
-                <span className="text-gray-900">${payment.amount_cad.toFixed(2)} CAD</span>
+                <span className="text-gray-900">${amountCad.toFixed(2)} CAD</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Crypto Amount</span>
-                <span className="text-gray-900">{payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}</span>
+                <span className="text-gray-900">{cryptoAmount.toFixed(8)} {payment.asset.toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Expires</span>
