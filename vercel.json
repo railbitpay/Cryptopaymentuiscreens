@@ -2,6 +2,20 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        { "key": "cache-control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "cache-control", "value": "no-store" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
@@ -9,7 +23,6 @@
     }
   ]
 }
-
 
 
 
