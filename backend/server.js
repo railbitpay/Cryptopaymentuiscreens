@@ -9,6 +9,10 @@ import http from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -440,7 +444,14 @@ const initializeDatabase = async () => {
 };
 
 // Initialize database on startup
-initializeDatabase();
+// Initialize database before starting server
+initializeDatabase().catch((error) => {
+  console.error('❌ Failed to initialize database:', error);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Exiting due to database initialization failure');
+    process.exit(1);
+  }
+});
 
 // JWT Secret (in production, use environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || 'railbit-secret-key-change-in-production';
@@ -569,6 +580,12 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Email, password, and business name are required' });
     }
 
+    // Validate JWT_SECRET is set
+    if (!JWT_SECRET || JWT_SECRET === 'railbit-secret-key-change-in-production') {
+      console.error('❌ JWT_SECRET is not properly configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     // Check if email already exists
     const existing = await dbGet('SELECT id FROM merchants WHERE email = ?', [email]);
     if (existing) {
@@ -645,7 +662,13 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('Error stack:', error.stack);
+    // Provide more detailed error message for debugging
+    const errorMessage = error.message || 'Registration failed';
+    res.status(500).json({ 
+      error: 'Registration failed',
+      details: process.env.NODE_ENV === 'production' ? undefined : errorMessage
+    });
   }
 });
 
@@ -2001,10 +2024,36 @@ io.on('connection', (socket) => {
   });
 });
 
+// ==================== ERROR HANDLING ====================
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Don't exit immediately, allow server to continue
+});
+
 // ==================== SERVER START ====================
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0'; // Use 0.0.0.0 for Railway/production
+
+// Validate required environment variables
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'railbit-secret-key-change-in-production') {
+    console.error('❌ ERROR: JWT_SECRET must be set in production!');
+    process.exit(1);
+  }
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ ERROR: DATABASE_URL must be set in production!');
+    process.exit(1);
+  }
+}
 
 server.listen(PORT, HOST, () => {
   console.log(`🚀 RailBit Backend Server running on port ${PORT}`);
@@ -2012,6 +2061,9 @@ server.listen(PORT, HOST, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 Frontend URL: ${frontendUrl}`);
   console.log(`💾 Database: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'}`);
+  if (usePostgreSQL) {
+    console.log(`🔗 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Missing'}`);
+  }
 });
 
 // Graceful shutdown
