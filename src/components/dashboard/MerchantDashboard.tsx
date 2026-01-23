@@ -146,6 +146,31 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
     );
   }
 
+  // Debug logging
+  useEffect(() => {
+    console.log('MerchantDashboard render:', { isAuthenticated, loading, user: user?.email });
+  }, [isAuthenticated, loading, user]);
+
+  if (!isAuthenticated && !loading) {
+    // This shouldn't happen, but provide fallback
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
+            <p className="text-gray-600">Please log in to access your merchant dashboard</p>
+          </div>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="w-full"
+          >
+            Reload Page
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       <DashboardSidebar 

@@ -36,9 +36,17 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         // If auth fails, clear user
-        if (error instanceof Error && error.message.includes('401')) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('merchant_data');
+        if (error instanceof Error) {
+          if (error.message.includes('401') || error.message.includes('403')) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('merchant_data');
+            window.location.reload(); // Force reload to show login
+          } else if (error.message.includes('304')) {
+            // 304 error - try again without cache
+            console.warn('Received 304, retrying...');
+            setTimeout(() => fetchData(), 100);
+            return;
+          }
         }
       } finally {
         setLoading(false);
