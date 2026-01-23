@@ -1222,8 +1222,15 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     `, [req.user.id]);
 
     res.json({
-      ...stats,
-      balances: balances || []
+      total_volume: parseFloat(stats.total_volume) || 0,
+      transaction_count: Number(stats.transaction_count) || 0,
+      paid_volume: parseFloat(stats.paid_volume) || 0,
+      paid_count: Number(stats.paid_count) || 0,
+      pending_count: Number(stats.pending_count) || 0,
+      balances: (balances || []).map(b => ({
+        asset: b.asset,
+        balance: parseFloat(b.balance) || 0
+      }))
     });
   } catch (error) {
     console.error('Get stats error:', error);
