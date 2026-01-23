@@ -239,20 +239,26 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const token = this.getToken();
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-
+    const headers = new Headers(options.headers);
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.set('Authorization', `Bearer ${token}`);
     }
 
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
+        // Prevent browser/proxy from returning 304 for API JSON (can break response.json())
+        cache: 'no-store',
       });
+
+      // 304 can happen with ETags; treat it as a cache-related failure for API calls
+      if (response.status === 304) {
+        throw new Error('Stale cached API response (304). Please refresh and try again.');
+      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));

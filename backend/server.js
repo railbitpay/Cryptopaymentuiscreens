@@ -35,6 +35,18 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+// Disable ETag generation (prevents 304 responses for API JSON)
+app.set('etag', false);
+
+// Prevent caching of API responses (fixes blank dashboard due to 304 + empty body)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 const uploadsDir = join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
