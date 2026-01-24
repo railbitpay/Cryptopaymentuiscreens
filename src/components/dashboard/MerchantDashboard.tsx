@@ -172,7 +172,7 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
       <DashboardSidebar 
         currentView={currentView}
         onNavigate={setCurrentView}
@@ -180,7 +180,7 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
         onNavigateToEntry={() => onNavigate('marketing')}
       />
       
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 w-full overflow-visible md:overflow-y-auto">
         {currentView === 'overview' && <DashboardOverview onNavigate={setCurrentView} />}
         {currentView === 'payments' && <PaymentsView />}
         {currentView === 'create-payment' && <CreatePaymentView />}

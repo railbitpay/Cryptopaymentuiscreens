@@ -28,7 +28,7 @@ export function AdminBackOffice({ onNavigate }: AdminBackOfficeProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
       <AdminSidebar 
         currentView={currentView}
         onNavigate={setCurrentView}
@@ -36,7 +36,7 @@ export function AdminBackOffice({ onNavigate }: AdminBackOfficeProps) {
         onNavigateToEntry={() => onNavigate('marketing')}
       />
       
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 w-full overflow-visible md:overflow-y-auto">
         {currentView === 'merchants' && <MerchantDirectory onSelectMerchant={handleMerchantSelect} />}
         {currentView === 'merchant-detail' && selectedMerchant && (
           <MerchantDetail 

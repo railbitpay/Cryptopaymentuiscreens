@@ -76,7 +76,7 @@ export function PayoutsView() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -86,7 +86,7 @@ export function PayoutsView() {
 
         {/* Upcoming Payout */}
         <Card className="p-6 bg-gradient-to-br from-blue-600 to-blue-800 text-white">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <p className="text-blue-100 mb-2">Next Scheduled Payout</p>
               <div className="flex items-baseline gap-3 mb-4">
@@ -112,7 +112,7 @@ export function PayoutsView() {
 
         {/* Bank Account Info */}
         <Card className="p-6">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h3 className="text-gray-900 mb-1">Settlement Bank Account</h3>
               <p className="text-gray-600 text-sm mb-4">EFT deposits to your Canadian bank account</p>
@@ -140,7 +140,7 @@ export function PayoutsView() {
           <h2 className="text-gray-900 mb-4">Payout History</h2>
           
           <Tabs defaultValue="all">
-            <TabsList>
+            <TabsList className="flex flex-wrap gap-2">
               <TabsTrigger value="all">All Payouts</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>

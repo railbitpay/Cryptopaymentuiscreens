@@ -130,7 +130,7 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
   ] : [];
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Dashboard Overview</h1>
         <p className="text-gray-600">Welcome back! Here's what's happening with your account.</p>

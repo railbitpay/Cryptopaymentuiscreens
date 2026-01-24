@@ -30,7 +30,7 @@ export function ComplianceLogsView() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
@@ -38,7 +38,7 @@ export function ComplianceLogsView() {
 
   if (error || !data) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <Alert className="border-red-200 bg-red-50">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-900">{error || 'Unable to load compliance data'}</AlertDescription>
@@ -50,7 +50,7 @@ export function ComplianceLogsView() {
   const { kycStatus, transactionMonitoring, amlAlerts, fintracReports } = data;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -112,7 +112,7 @@ export function ComplianceLogsView() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="kyc">
-          <TabsList>
+          <TabsList className="flex flex-wrap gap-2">
             <TabsTrigger value="kyc">KYC Documents</TabsTrigger>
             <TabsTrigger value="monitoring">Transaction Monitoring</TabsTrigger>
             <TabsTrigger value="aml">AML Alerts</TabsTrigger>

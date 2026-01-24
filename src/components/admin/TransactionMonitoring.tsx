@@ -36,7 +36,7 @@ export function TransactionMonitoring() {
   const { stats, recentTransactions, largeTransactions } = data;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -45,7 +45,7 @@ export function TransactionMonitoring() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-600">Volume Today</p>
@@ -95,7 +95,7 @@ export function TransactionMonitoring() {
 
         {/* Main Content */}
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="flex flex-wrap gap-2">
             <TabsTrigger value="all">All Transactions</TabsTrigger>
             <TabsTrigger value="large">Large Transactions</TabsTrigger>
             <TabsTrigger value="flagged">Flagged</TabsTrigger>

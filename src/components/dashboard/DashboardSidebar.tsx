@@ -50,7 +50,7 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
   ];
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
+    <div className="w-full md:w-64 bg-gray-900 text-white flex flex-col md:sticky md:top-0 md:h-screen">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
@@ -97,7 +97,7 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-x-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;

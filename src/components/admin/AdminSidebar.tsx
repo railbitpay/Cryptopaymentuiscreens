@@ -25,7 +25,7 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
   ];
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
+    <div className="w-full md:w-64 bg-gray-900 text-white flex flex-col md:sticky md:top-0 md:h-screen">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
@@ -41,7 +41,7 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-x-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id || 

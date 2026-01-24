@@ -95,7 +95,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
@@ -103,7 +103,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
 
   if (!merchant) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <Alert>
           <AlertDescription>Merchant not found</AlertDescription>
         </Alert>
@@ -112,7 +112,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -138,7 +138,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Volume</p>
             <p className="text-2xl text-gray-900">
@@ -172,7 +172,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
           <TabsContent value="info" className="mt-6">
             <Card className="p-6">
               <h3 className="text-gray-900 mb-6">Business Details</h3>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm text-gray-600">Business Name</label>
                   <p className="text-gray-900 mt-1">{merchant.business_name || 'N/A'}</p>

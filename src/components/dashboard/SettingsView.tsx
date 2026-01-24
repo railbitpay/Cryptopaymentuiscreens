@@ -279,7 +279,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -288,7 +288,7 @@ export function SettingsView() {
         </div>
 
         <Tabs defaultValue="profile">
-          <TabsList>
+          <TabsList className="flex flex-wrap gap-2">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="api">API Keys</TabsTrigger>
             <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
@@ -302,7 +302,7 @@ export function SettingsView() {
             <Card className="p-6">
               <h3 className="text-gray-900 mb-4">Business Information</h3>
               <div className="space-y-4 max-w-2xl">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Business Name</Label>
                     <Input value={profile.businessName} className="mt-1" onChange={(e) => setProfile({ ...profile, businessName: e.target.value })} />
@@ -328,7 +328,7 @@ export function SettingsView() {
                   <Label>Business Address</Label>
                   <Input value={profile.addressLine1} className="mt-1" onChange={(e) => setProfile({ ...profile, addressLine1: e.target.value })} />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>City</Label>
                     <Input value={profile.city} className="mt-1" onChange={(e) => setProfile({ ...profile, city: e.target.value })} />

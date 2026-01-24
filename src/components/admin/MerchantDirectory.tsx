@@ -54,7 +54,7 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -71,7 +71,7 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Merchants</p>
             <p className="text-2xl text-gray-900">{merchants.length}</p>
@@ -96,7 +96,7 @@ export function MerchantDirectory({ onSelectMerchant }: MerchantDirectoryProps) 
 
         {/* Filters */}
         <Card className="p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
