@@ -9,14 +9,16 @@ interface DashboardSidebarProps {
   onNavigate: (view: DashboardView) => void;
   onLogout: () => void;
   onNavigateToEntry?: () => void;
+  onItemSelect?: () => void;
 }
 
-export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: DashboardSidebarProps) {
+export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry, onItemSelect }: DashboardSidebarProps) {
   const { user, logout } = useAuth();
   
   const handleLogout = () => {
     logout(); // Clear authentication state
     onLogout(); // Navigate to logout page
+    onItemSelect?.();
   };
   
   // Get initials from business name or email
@@ -54,7 +56,10 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
-          onClick={onNavigateToEntry}
+          onClick={() => {
+            onNavigateToEntry?.();
+            onItemSelect?.();
+          }}
           className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -105,7 +110,10 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id);
+                onItemSelect?.();
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-blue-600 text-white'

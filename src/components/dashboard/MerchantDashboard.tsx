@@ -14,8 +14,9 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, Menu } from 'lucide-react';
 import type { AppView } from '../../App';
+import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 
 interface MerchantDashboardProps {
   onNavigate: (view: AppView) => void;
@@ -34,6 +35,7 @@ export type DashboardView =
 export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
   const { isAuthenticated, loading, login, user } = useAuth();
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
@@ -171,14 +173,57 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
     );
   }
 
+  const viewLabels: Record<DashboardView, string> = {
+    overview: 'Overview',
+    payments: 'Payments',
+    'create-payment': 'Create Payment',
+    'pos-mode': 'POS Mode',
+    assets: 'Assets & Wallets',
+    payouts: 'Payouts',
+    compliance: 'Compliance',
+    settings: 'Settings'
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      <DashboardSidebar 
-        currentView={currentView}
-        onNavigate={setCurrentView}
-        onLogout={() => onNavigate('logout')}
-        onNavigateToEntry={() => onNavigate('marketing')}
-      />
+      <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-gray-700">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-80 max-w-[85vw] bg-gray-900 text-white border-gray-800">
+                <DashboardSidebar
+                  currentView={currentView}
+                  onNavigate={setCurrentView}
+                  onLogout={() => onNavigate('logout')}
+                  onNavigateToEntry={() => onNavigate('marketing')}
+                  onItemSelect={() => setMobileNavOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
+            <div>
+              <p className="text-sm text-gray-500">RailBit</p>
+              <p className="text-lg font-semibold text-gray-900">{viewLabels[currentView]}</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => onNavigate('logout')}>
+            Logout
+          </Button>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
+        <DashboardSidebar 
+          currentView={currentView}
+          onNavigate={setCurrentView}
+          onLogout={() => onNavigate('logout')}
+          onNavigateToEntry={() => onNavigate('marketing')}
+        />
+      </div>
       
       <main className="flex-1 w-full overflow-visible md:overflow-y-auto">
         {currentView === 'overview' && <DashboardOverview onNavigate={setCurrentView} />}

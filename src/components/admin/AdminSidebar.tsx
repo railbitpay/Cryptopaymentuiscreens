@@ -8,14 +8,16 @@ interface AdminSidebarProps {
   onNavigate: (view: AdminView) => void;
   onLogout: () => void;
   onNavigateToEntry?: () => void;
+  onItemSelect?: () => void;
 }
 
-export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: AdminSidebarProps) {
+export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry, onItemSelect }: AdminSidebarProps) {
   const { logout } = useAuth();
   
   const handleLogout = () => {
     logout(); // Clear authentication state
     onLogout(); // Navigate to logout page
+    onItemSelect?.();
   };
   const menuItems = [
     { id: 'merchants' as AdminView, label: 'Merchants', icon: Store },
@@ -29,7 +31,10 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
-          onClick={onNavigateToEntry}
+          onClick={() => {
+            onNavigateToEntry?.();
+            onItemSelect?.();
+          }}
           className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -50,7 +55,10 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id);
+                onItemSelect?.();
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-gray-800 text-white'
