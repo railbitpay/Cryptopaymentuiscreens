@@ -16,7 +16,6 @@ import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Mail, Lock, Loader2, AlertCircle, Menu } from 'lucide-react';
 import type { AppView } from '../../App';
-import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 
 interface MerchantDashboardProps {
   onNavigate: (view: AppView) => void;
@@ -189,22 +188,15 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
       <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-gray-700">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-80 max-w-[85vw] bg-gray-900 text-white border-gray-800">
-                <DashboardSidebar
-                  currentView={currentView}
-                  onNavigate={setCurrentView}
-                  onLogout={() => onNavigate('logout')}
-                  onNavigateToEntry={() => onNavigate('marketing')}
-                  onItemSelect={() => setMobileNavOpen(false)}
-                />
-              </SheetContent>
-            </Sheet>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-700"
+              aria-label="Open menu"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <div>
               <p className="text-sm text-gray-500">RailBit</p>
               <p className="text-lg font-semibold text-gray-900">{viewLabels[currentView]}</p>
@@ -215,6 +207,26 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
           </Button>
         </div>
       </div>
+
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-gray-900 text-white shadow-xl">
+            <DashboardSidebar
+              currentView={currentView}
+              onNavigate={setCurrentView}
+              onLogout={() => onNavigate('logout')}
+              onNavigateToEntry={() => onNavigate('marketing')}
+              onItemSelect={() => setMobileNavOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="hidden md:block">
         <DashboardSidebar 
