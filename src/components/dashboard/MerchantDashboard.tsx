@@ -152,6 +152,18 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
     console.log('MerchantDashboard render:', { isAuthenticated, loading, user: user?.email });
   }, [isAuthenticated, loading, user]);
 
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    if (mobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = originalOverflow || '';
+    }
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+    };
+  }, [mobileNavOpen]);
+
   if (!isAuthenticated && !loading) {
     // This shouldn't happen, but provide fallback
     return (
@@ -209,21 +221,21 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
       </div>
 
       {mobileNavOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
             aria-label="Close menu"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 z-50 bg-black/50"
             onClick={() => setMobileNavOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-gray-900 text-white shadow-xl">
-            <DashboardSidebar
-              currentView={currentView}
-              onNavigate={setCurrentView}
-              onLogout={() => onNavigate('logout')}
-              onNavigateToEntry={() => onNavigate('marketing')}
-              onItemSelect={() => setMobileNavOpen(false)}
-            />
+          <div className="absolute left-0 top-0 z-[60] h-full w-80 max-w-[85vw] bg-gray-900 text-white shadow-xl">
+                <DashboardSidebar
+                  currentView={currentView}
+                  onNavigate={setCurrentView}
+                  onLogout={() => onNavigate('logout')}
+                  onNavigateToEntry={() => setCurrentView('overview')}
+                  onItemSelect={() => setMobileNavOpen(false)}
+                />
           </div>
         </div>
       )}
@@ -233,11 +245,14 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
           currentView={currentView}
           onNavigate={setCurrentView}
           onLogout={() => onNavigate('logout')}
-          onNavigateToEntry={() => onNavigate('marketing')}
+          onNavigateToEntry={() => setCurrentView('overview')}
         />
       </div>
       
-      <main className="flex-1 w-full overflow-visible md:overflow-y-auto">
+      <main
+        className={`flex-1 w-full overflow-visible md:overflow-y-auto ${mobileNavOpen ? 'pointer-events-none' : ''}`}
+        aria-hidden={mobileNavOpen}
+      >
         {currentView === 'overview' && <DashboardOverview onNavigate={setCurrentView} />}
         {currentView === 'payments' && <PaymentsView />}
         {currentView === 'create-payment' && <CreatePaymentView />}

@@ -79,26 +79,92 @@ export default function App() {
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
+  const resolveRoute = (path: string): { view: AppView; paymentId?: string | null } => {
+    const paymentMatch = path.match(/^\/payment\/([^/]+)/);
+    if (paymentMatch) {
+      return { view: 'customer-payment', paymentId: paymentMatch[1] };
+    }
+    switch (path) {
+      case '/':
+      case '/marketing':
+        return { view: 'marketing' };
+      case '/hub':
+        return { view: 'hub' };
+      case '/onboarding':
+        return { view: 'onboarding' };
+      case '/dashboard':
+        return { view: 'dashboard' };
+      case '/admin':
+        return { view: 'admin' };
+      case '/api-docs':
+        return { view: 'api-docs' };
+      case '/logout':
+        return { view: 'logout' };
+      default:
+        return { view: 'marketing' };
+    }
+  };
+
+  const viewPathMap: Record<Exclude<AppView, 'customer-payment'>, string> = {
+    hub: '/hub',
+    marketing: '/',
+    onboarding: '/onboarding',
+    dashboard: '/dashboard',
+    admin: '/admin',
+    'api-docs': '/api-docs',
+    logout: '/logout'
+  };
+
   // Check URL for payment ID (for customer payment links)
   useEffect(() => {
     if (hasInitialized) return; // Only run once on mount
     
-    const path = window.location.pathname;
-    const paymentMatch = path.match(/\/payment\/([^/]+)/);
-    if (paymentMatch) {
-      setPaymentId(paymentMatch[1]);
-      setCurrentView('customer-payment');
-      setHasInitialized(true);
-      return;
+    const { view, paymentId: routePaymentId } = resolveRoute(window.location.pathname);
+    if (routePaymentId) {
+      setPaymentId(routePaymentId);
     }
+    setCurrentView(view);
     
     // Don't auto-redirect authenticated users - let them navigate manually
     // This allows them to see the marketing page even if logged in
     setHasInitialized(true);
   }, [hasInitialized]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const { view, paymentId: routePaymentId } = resolveRoute(window.location.pathname);
+      setPaymentId(routePaymentId ?? null);
+      setCurrentView(view);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (view: AppView) => {
+    if (view === 'customer-payment') {
+      if (paymentId) {
+        const path = `/payment/${paymentId}`;
+        if (window.location.pathname !== path) {
+          window.history.pushState(null, '', path);
+        }
+      }
+      setCurrentView(view);
+      return;
+    }
+
+    const path = viewPathMap[view];
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
+    setCurrentView(view);
+  };
+
   const handleCreatePayment = (id: string) => {
     setPaymentId(id);
+    const path = `/payment/${id}`;
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
     setCurrentView('customer-payment');
   };
 
@@ -127,28 +193,28 @@ export default function App() {
           }
         >
           {currentView === 'hub' && (
-            <NavigationHub onNavigate={setCurrentView} />
+            <NavigationHub onNavigate={navigate} />
           )}
           {currentView === 'marketing' && (
-            <MarketingSite onNavigate={setCurrentView} />
+            <MarketingSite onNavigate={navigate} />
           )}
           {currentView === 'onboarding' && (
-            <MerchantOnboarding onComplete={() => setCurrentView('dashboard')} onNavigate={setCurrentView} />
+            <MerchantOnboarding onComplete={() => navigate('dashboard')} onNavigate={navigate} />
           )}
           {currentView === 'dashboard' && (
-            <MerchantDashboard onNavigate={setCurrentView} />
+            <MerchantDashboard onNavigate={navigate} />
           )}
           {currentView === 'customer-payment' && (
-            <CustomerPayment paymentId={paymentId} onNavigate={setCurrentView} />
+            <CustomerPayment paymentId={paymentId} onNavigate={navigate} />
           )}
           {currentView === 'admin' && (
-            <AdminBackOffice onNavigate={setCurrentView} />
+            <AdminBackOffice onNavigate={navigate} />
           )}
           {currentView === 'api-docs' && (
-            <APIDocs onNavigate={setCurrentView} />
+            <APIDocs onNavigate={navigate} />
           )}
           {currentView === 'logout' && (
-            <LogoutPage onNavigate={setCurrentView} />
+            <LogoutPage onNavigate={navigate} />
           )}
         </Suspense>
       </ChunkErrorBoundary>

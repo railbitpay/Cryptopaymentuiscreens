@@ -27,6 +27,8 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
   const [transitNumber, setTransitNumber] = useState('');
   const [institutionNumber, setInstitutionNumber] = useState('');
 
+  const digitsOnly = (value: string) => value.replace(/\D+/g, '');
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -34,6 +36,12 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
     if (settlementMode === 'cad') {
       if (!bankName || !transitNumber || !institutionNumber || !accountNumber) {
         // Form validation will handle this via required attributes
+        return;
+      }
+      if (transitNumber.length !== 3 || institutionNumber.length !== 3) {
+        return;
+      }
+      if (accountNumber.length < 5 || accountNumber.length > 12) {
         return;
       }
     }
@@ -195,41 +203,51 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="transitNumber">Transit Number</Label>
-                    <Input
-                      id="transitNumber"
-                      type="text"
-                      placeholder="12345"
-                      value={transitNumber}
-                      onChange={(e) => setTransitNumber(e.target.value)}
-                      maxLength={5}
-                      required
-                    />
-                  </div>
+                  <Input
+                    id="transitNumber"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\\d*"
+                    placeholder="123"
+                    value={transitNumber}
+                    onChange={(e) => setTransitNumber(digitsOnly(e.target.value).slice(0, 3))}
+                    maxLength={3}
+                    minLength={3}
+                    required
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="institutionNumber">Institution</Label>
-                    <Input
-                      id="institutionNumber"
-                      type="text"
-                      placeholder="004"
-                      value={institutionNumber}
-                      onChange={(e) => setInstitutionNumber(e.target.value)}
-                      maxLength={3}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="institutionNumber">Institution</Label>
+                  <Input
+                    id="institutionNumber"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\\d*"
+                    placeholder="004"
+                    value={institutionNumber}
+                    onChange={(e) => setInstitutionNumber(digitsOnly(e.target.value).slice(0, 3))}
+                    maxLength={3}
+                    minLength={3}
+                    required
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      type="text"
-                      placeholder="1234567"
-                      value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number</Label>
+                  <Input
+                    id="accountNumber"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\\d*"
+                    placeholder="1234567"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(digitsOnly(e.target.value).slice(0, 12))}
+                    maxLength={12}
+                    minLength={5}
+                    required
+                  />
+                </div>
                 </div>
               </div>
             </div>
