@@ -55,10 +55,15 @@ export function POSModeView() {
         const assetLower = asset.toLowerCase() as 'btc' | 'eth' | 'sol';
         
         const newPayment = await api.createPayment(amountNum, assetLower, `POS Payment - $${amount}`);
-        setPayment(newPayment);
+        const normalized = {
+          ...newPayment,
+          amount_cad: Number(newPayment.amount_cad) || 0,
+          crypto_amount: Number(newPayment.crypto_amount) || 0
+        };
+        setPayment(normalized);
         setSelectedAsset(asset);
         setPaymentStatus('pending');
-        setCountdown(Math.max(0, Math.floor((new Date(newPayment.expires_at).getTime() - Date.now()) / 1000)));
+        setCountdown(Math.max(0, Math.floor((new Date(normalized.expires_at).getTime() - Date.now()) / 1000)));
         
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create payment');
@@ -88,10 +93,15 @@ export function POSModeView() {
     const pollInterval = setInterval(async () => {
       try {
         const updatedPayment = await api.getPayment(payment.id);
-        if (updatedPayment.status === 'paid') {
-          setPayment(updatedPayment);
+        const normalized = {
+          ...updatedPayment,
+          amount_cad: Number(updatedPayment.amount_cad) || 0,
+          crypto_amount: Number(updatedPayment.crypto_amount) || 0
+        };
+        if (normalized.status === 'paid') {
+          setPayment(normalized);
           setPaymentStatus('success');
-        } else if (new Date(updatedPayment.expires_at) < new Date()) {
+        } else if (new Date(normalized.expires_at) < new Date()) {
           setPaymentStatus('failed');
         }
       } catch (err) {
@@ -110,8 +120,8 @@ export function POSModeView() {
 
   if (paymentStatus === 'creating') {
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center p-8">
-        <Card className="max-w-lg w-full p-12 text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-lg w-full p-6 sm:p-12 text-center">
           <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
           <h2 className="text-gray-900 mb-2">Creating Payment...</h2>
           <p className="text-gray-600">Please wait</p>
@@ -122,8 +132,8 @@ export function POSModeView() {
 
   if (paymentStatus === 'success' && payment) {
     return (
-      <div className="h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-8">
-        <Card className="max-w-lg w-full p-12 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-lg w-full p-6 sm:p-12 text-center">
           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-16 h-16 text-green-600" />
           </div>
@@ -156,8 +166,8 @@ export function POSModeView() {
     const Icon = asset.icon;
 
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center p-8">
-        <Card className="max-w-2xl w-full p-12">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-2xl w-full p-6 sm:p-12">
           <div className="flex justify-between items-start mb-8">
             <div>
               <h2 className="text-gray-900 mb-1">Waiting for Payment</h2>
@@ -174,7 +184,7 @@ export function POSModeView() {
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* QR Code */}
             <div className="flex flex-col items-center">
               <div className="w-full aspect-square bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center mb-4 p-4">
@@ -236,8 +246,8 @@ export function POSModeView() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="max-w-5xl w-full grid md:grid-cols-2 gap-8">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         {/* Left: Amount Entry */}
         <Card className="p-8">
           <h2 className="text-gray-900 mb-6">Enter Amount (CAD)</h2>
@@ -253,7 +263,7 @@ export function POSModeView() {
             </div>
 
             {/* Number Pad */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'C'].map((num) => (
                 <Button
                   key={num}

@@ -38,7 +38,7 @@ export function ComplianceEvents() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -47,7 +47,7 @@ export function ComplianceEvents() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Reports</p>
             <p className="text-2xl text-gray-900">{stats.totalReports}</p>

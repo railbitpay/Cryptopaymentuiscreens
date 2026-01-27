@@ -9,14 +9,16 @@ interface DashboardSidebarProps {
   onNavigate: (view: DashboardView) => void;
   onLogout: () => void;
   onNavigateToEntry?: () => void;
+  onItemSelect?: () => void;
 }
 
-export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: DashboardSidebarProps) {
+export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry, onItemSelect }: DashboardSidebarProps) {
   const { user, logout } = useAuth();
   
   const handleLogout = () => {
     logout(); // Clear authentication state
     onLogout(); // Navigate to logout page
+    onItemSelect?.();
   };
   
   // Get initials from business name or email
@@ -50,11 +52,14 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
   ];
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
+    <div className="w-full md:w-64 bg-gray-900 text-white flex flex-col md:sticky md:top-0 md:h-screen">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
-          onClick={onNavigateToEntry}
+          onClick={() => {
+            onNavigateToEntry?.();
+            onItemSelect?.();
+          }}
           className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -97,7 +102,7 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-x-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
@@ -105,7 +110,10 @@ export function DashboardSidebar({ currentView, onNavigate, onLogout, onNavigate
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id);
+                onItemSelect?.();
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-blue-600 text-white'

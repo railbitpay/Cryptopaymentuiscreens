@@ -177,10 +177,10 @@ export function AssetsView() {
   const totalCADValue = assets.reduce((sum, asset) => sum + asset.cadValue, 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-gray-900">Assets & Wallets</h1>
             <p className="text-gray-600 mt-1">Manage your crypto balances and settlement preferences</p>
@@ -220,8 +220,8 @@ export function AssetsView() {
               const Icon = asset.icon;
               return (
                 <Card key={asset.symbol} className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
                       <div className={`w-12 h-12 ${colorClasses[asset.color]?.bg || 'bg-gray-100'} rounded-full flex items-center justify-center`}>
                         <Icon className={`${colorClasses[asset.color]?.text || 'text-gray-600'} w-6 h-6`} />
                       </div>
@@ -248,7 +248,7 @@ export function AssetsView() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Button
                         onClick={() => {
                           setSelectedAsset(asset);

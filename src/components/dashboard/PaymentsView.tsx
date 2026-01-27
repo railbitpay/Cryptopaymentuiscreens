@@ -17,7 +17,13 @@ export function PaymentsView() {
     const fetchPayments = async () => {
       try {
         const data = await api.getPayments();
-        setPayments(data);
+        setPayments(
+          data.map((p) => ({
+            ...p,
+            amount_cad: Number(p.amount_cad) || 0,
+            crypto_amount: Number(p.crypto_amount) || 0
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch payments:', error);
       } finally {
@@ -78,7 +84,7 @@ export function PaymentsView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Payments</h1>
         <p className="text-gray-600">View and manage all crypto payment transactions</p>
@@ -86,7 +92,7 @@ export function PaymentsView() {
 
       <Card className="p-6">
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
@@ -111,7 +117,7 @@ export function PaymentsView() {
 
         {/* Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex flex-wrap gap-2">
             <TabsTrigger value="all">All Payments</TabsTrigger>
             <TabsTrigger value="btc">BTC Lightning</TabsTrigger>
             <TabsTrigger value="eth">Ethereum</TabsTrigger>
@@ -183,7 +189,7 @@ export function PaymentsView() {
         </Tabs>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600">
             Showing {filteredPayments.length} of {payments.length} payments
           </p>
