@@ -4,6 +4,13 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { Bitcoin, Wallet, DollarSign, Building2 } from 'lucide-react';
+import { CryptoCard } from '../ui/core/CryptoCard/CryptoCard';
+import { CardLabel } from '../ui/core/CryptoCard/CardLabel';
+import { CardInput } from '../ui/core/CryptoCard/CryptoInput';
+import { CryptoInfo } from '../ui/core/CryptoCard/CryptoInfo';
+import { CryptoIcon } from '../ui/core/CryptoCard/CryptoIcon';
+import { CryptoName } from '../ui/core/CryptoCard/CryptoName';
+import { CryptoText } from '../ui/core/CryptoCard/CryptoText';
 
 interface SettlementPreferencesProps {
   onNext: (data: {
@@ -115,65 +122,100 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
 
           {/* Enabled Assets */}
           { settlementMode === 'crypto' &&(
-            <div className="space-y-4">
-              <Label>Accepted Cryptocurrencies</Label>
-              <span className="text-red-600">{error && error}</span>
-              <div className="space-y-3">
-                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enableBTC}
-                    onChange={(e) => setEnableBTC(e.target.checked)}
-                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                  />
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <Bitcoin className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900">Bitcoin Lightning</p>
-                      <p className="text-xs text-gray-500">0.5% fee • Instant settlements</p>
-                    </div>
-                  </div>
-                </label>
+            <CryptoCard error={error}>
+                <CardLabel>
+                    <CardInput checked={enableBTC} onChange={(e) => setEnableBTC(e.target.checked)} />
+                    <CryptoInfo>
+                      <CryptoIcon>
+                        <Bitcoin className="w-5 h-5 text-orange-600" />
+                      </CryptoIcon>
+                      <CryptoName>Bitcoin Lightning</CryptoName>
+                    <CryptoText>0.5% fee • Instant settlements</CryptoText>
+                </CryptoInfo>
+                </CardLabel>
 
-                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enableETH}
-                    onChange={(e) => setEnableETH(e.target.checked)}
-                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                  />
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900">Ethereum</p>
-                      <p className="text-xs text-gray-500">1.0% fee • ~15 seconds</p>
-                    </div>
-                  </div>
-                </label>
+                <CardLabel>
+                    <CardInput checked={enableETH} onChange={(e) => setEnableETH(e.target.checked)} />
+                    <CryptoInfo>
+                      <CryptoIcon className="bg-purple-100">
+                        <Wallet className="w-5 h-5 text-purple-600"/>
+                      </CryptoIcon>
+                      <CryptoName>Ethereum</CryptoName>
+                    <CryptoText>1.0% fee • ~15 seconds</CryptoText>
+                </CryptoInfo>
+                </CardLabel>
 
-                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enableSOL}
-                    onChange={(e) => setEnableSOL(e.target.checked)}
-                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                  />
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900">Solana</p>
-                      <p className="text-xs text-gray-500">0.8% fee • ~1 second</p>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
+                <CardLabel>
+                    <CardInput checked={enableSOL} onChange={(e) => setEnableSOL(e.target.checked)} />
+                    <CryptoInfo>
+                      <CryptoIcon className="bg-green-100">
+                        <Wallet className="w-5 h-5 text-green-600" />
+                      </CryptoIcon>
+                      <CryptoName>Solana</CryptoName>
+                    <CryptoText>0.8% fee • ~1 second</CryptoText>
+                </CryptoInfo>
+                </CardLabel>
+            </CryptoCard>
+            
+            // <div className="space-y-4">
+            //   <Label>Accepted Cryptocurrencies</Label>
+            //   <span className="text-red-600">{error && error}</span>
+            //   <div className="space-y-3">
+            //     <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+            //       <input
+            //         type="checkbox"
+            //         checked={enableBTC}
+            //         onChange={(e) => setEnableBTC(e.target.checked)}
+            //         className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+            //       />
+            //       <div className="flex items-center gap-3 flex-1">
+            //         <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+            //           <Bitcoin className="w-5 h-5 text-orange-600" />
+            //         </div>
+            //         <div>
+            //           <p className="text-sm text-gray-900">Bitcoin Lightning</p>
+            //           <p className="text-xs text-gray-500">0.5% fee • Instant settlements</p>
+            //         </div>
+            //       </div>
+            //     </label>
+
+            //     <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+            //       <input
+            //         type="checkbox"
+            //         checked={enableETH}
+            //         onChange={(e) => setEnableETH(e.target.checked)}
+            //         className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+            //       />
+            //       <div className="flex items-center gap-3 flex-1">
+            //         <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+            //           <Wallet className="w-5 h-5 text-purple-600" />
+            //         </div>
+            //         <div>
+            //           <p className="text-sm text-gray-900">Ethereum</p>
+            //           <p className="text-xs text-gray-500">1.0% fee • ~15 seconds</p>
+            //         </div>
+            //       </div>
+            //     </label>
+
+            //     <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+            //       <input
+            //         type="checkbox"
+            //         checked={enableSOL}
+            //         onChange={(e) => setEnableSOL(e.target.checked)}
+            //         className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+            //       />
+            //       <div className="flex items-center gap-3 flex-1">
+            //         <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+            //           <Wallet className="w-5 h-5 text-green-600" />
+            //         </div>
+            //         <div>
+            //           <p className="text-sm text-gray-900">Solana</p>
+            //           <p className="text-xs text-gray-500">0.8% fee • ~1 second</p>
+            //         </div>
+            //       </div>
+            //     </label>
+            //   </div>
+            // </div>
           )}
 
           {/* Bank Account for CAD */}
