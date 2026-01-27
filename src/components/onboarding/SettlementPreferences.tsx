@@ -26,6 +26,7 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
   const [accountNumber, setAccountNumber] = useState('');
   const [transitNumber, setTransitNumber] = useState('');
   const [institutionNumber, setInstitutionNumber] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,8 +46,9 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
       enableSOL ? 'sol' : null
     ].filter(Boolean) as string[];
     
-    if (selectedAssets.length === 0) {
+    if (settlementMode === 'crypto' && selectedAssets.length === 0) {
       // This shouldn't happen since all are checked by default, but handle it
+      setError('Select at least one settlement asset');
       return;
     }
     
@@ -112,64 +114,67 @@ export function SettlementPreferences({ onNext, onBack }: SettlementPreferencesP
           </div>
 
           {/* Enabled Assets */}
-          <div className="space-y-4">
-            <Label>Accepted Cryptocurrencies</Label>
-            <div className="space-y-3">
-              <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableBTC}
-                  onChange={(e) => setEnableBTC(e.target.checked)}
-                  className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Bitcoin className="w-5 h-5 text-orange-600" />
+          { settlementMode === 'crypto' &&(
+            <div className="space-y-4">
+              <Label>Accepted Cryptocurrencies</Label>
+              <span className="text-red-600">{error && error}</span>
+              <div className="space-y-3">
+                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableBTC}
+                    onChange={(e) => setEnableBTC(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                  />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <Bitcoin className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900">Bitcoin Lightning</p>
+                      <p className="text-xs text-gray-500">0.5% fee • Instant settlements</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-900">Bitcoin Lightning</p>
-                    <p className="text-xs text-gray-500">0.5% fee • Instant settlements</p>
-                  </div>
-                </div>
-              </label>
+                </label>
 
-              <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableETH}
-                  onChange={(e) => setEnableETH(e.target.checked)}
-                  className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-purple-600" />
+                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableETH}
+                    onChange={(e) => setEnableETH(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                  />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900">Ethereum</p>
+                      <p className="text-xs text-gray-500">1.0% fee • ~15 seconds</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-900">Ethereum</p>
-                    <p className="text-xs text-gray-500">1.0% fee • ~15 seconds</p>
-                  </div>
-                </div>
-              </label>
+                </label>
 
-              <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableSOL}
-                  onChange={(e) => setEnableSOL(e.target.checked)}
-                  className="w-5 h-5 text-blue-600 border-gray-300 rounded"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-green-600" />
+                <label className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableSOL}
+                    onChange={(e) => setEnableSOL(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                  />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900">Solana</p>
+                      <p className="text-xs text-gray-500">0.8% fee • ~1 second</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-900">Solana</p>
-                    <p className="text-xs text-gray-500">0.8% fee • ~1 second</p>
-                  </div>
-                </div>
-              </label>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bank Account for CAD */}
           {settlementMode === 'cad' && (

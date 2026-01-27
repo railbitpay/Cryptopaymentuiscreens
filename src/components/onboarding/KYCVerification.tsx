@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -9,6 +10,7 @@ interface KYCVerificationProps {
   onNext: () => void;
   onBack: () => void;
 }
+// NOT STARTED
 
 type DocumentStatus = 'not-started' | 'uploaded' | 'in-review' | 'approved';
 
