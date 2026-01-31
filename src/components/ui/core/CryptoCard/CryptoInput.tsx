@@ -6,7 +6,7 @@ interface CardInputProps extends ComponentProps<'input'> {
     children?: React.ReactNode;
     classname?: string;
     onChange: (e: any) => void;
-    onClick?: void
+    onClick?: () => void
 }
 
 export const CardInput = ({checked, classname, onChange, onClick, ...props}: CardInputProps) => {

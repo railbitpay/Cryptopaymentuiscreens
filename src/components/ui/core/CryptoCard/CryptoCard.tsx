@@ -3,9 +3,9 @@ import { Label } from '../../label';
 import { cn } from '../../utils';
 
 interface CardProps {
-    children?: React.ReactElement;
+    children?: React.ReactNode;
     classname?: string;
-    error?: string
+    error?: string | null
 }
 export const CryptoCard = ({children, classname, error, ...props}: CardProps) => {
     return (
