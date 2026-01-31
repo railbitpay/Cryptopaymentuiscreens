@@ -16,6 +16,13 @@ import { Label } from '../ui/label';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Mail, Lock, Loader2, AlertCircle, Menu } from 'lucide-react';
 import type { AppView } from '../../App';
+import { useMobileNavBodyLock } from '../hooks/useMobileNavBodyLock';
+import { LoginForm } from '../core/Form/LoginForm';
+import { Form } from '../core/Form/Form';
+import { FormInput } from '../core/Form/Input';
+import { DashboardLayout } from '../Layouts/DashboardLayout';
+import { BaseLayoutHeader } from '../Layouts/BaseLayoutHeader';
+
 
 interface MerchantDashboardProps {
   onNavigate: (view: AppView) => void;
@@ -69,70 +76,28 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
   // Show login form if not authenticated
   if (!loading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h1>
-            <p className="text-gray-600">Please log in to access your merchant dashboard</p>
-          </div>
-
-          {error && (
-            <Alert className="mb-4 border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-900">{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@business.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loginLoading}>
-              {loginLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto" 
-                onClick={() => onNavigate('onboarding')}
-              >
-                Sign Up
-              </Button>
-            </p>
-            <Button 
-              variant="ghost" 
-              className="mt-4"
-              onClick={() => onNavigate('marketing')}
-            >
-              Back to Home
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <LoginForm
+        error={error}
+        title={'Login Required'}
+        onSignupClick={() => onNavigate('onboarding')}
+        onHomeClick={() => onNavigate('marketing')}>
+          <Form onSubmit={handleLogin} loading={loginLoading}>
+            <FormInput
+              id='email'
+              type='email'
+              placeholder='you@business.com'
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+            <FormInput
+              id='password'
+              type='password'
+              placeholder='********'
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </Form>
+      </LoginForm>
     );
   }
 
@@ -152,17 +117,8 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
     console.log('MerchantDashboard render:', { isAuthenticated, loading, user: user?.email });
   }, [isAuthenticated, loading, user]);
 
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    if (mobileNavOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = originalOverflow || '';
-    }
-    return () => {
-      document.body.style.overflow = originalOverflow || '';
-    };
-  }, [mobileNavOpen]);
+  // Lock body scroll when mobile nav is open
+  useMobileNavBodyLock(mobileNavOpen)
 
   if (!isAuthenticated && !loading) {
     // This shouldn't happen, but provide fallback
@@ -196,72 +152,50 @@ export function MerchantDashboard({ onNavigate }: MerchantDashboardProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-700"
-              aria-label="Open menu"
-              onClick={() => setMobileNavOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div>
-              <p className="text-sm text-gray-500">RailBit</p>
-              <p className="text-lg font-semibold text-gray-900">{viewLabels[currentView]}</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => onNavigate('logout')}>
-            Logout
-          </Button>
-        </div>
-      </div>
-
-      {mobileNavOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="absolute inset-0 z-50 bg-black/50"
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <div className="absolute left-0 top-0 z-[60] h-full w-80 max-w-[85vw] bg-gray-900 text-white shadow-xl">
-                <DashboardSidebar
-                  currentView={currentView}
-                  onNavigate={setCurrentView}
-                  onLogout={() => onNavigate('logout')}
-                  onNavigateToEntry={() => setCurrentView('overview')}
-                  onItemSelect={() => setMobileNavOpen(false)}
-                />
-          </div>
-        </div>
-      )}
-
-      <div className="hidden md:block">
+    <DashboardLayout
+      onMobileNavOpen={setMobileNavOpen}
+      mobileNavOpen={mobileNavOpen}
+      currentView={currentView}
+      viewLabels={viewLabels}
+      header={
+        <BaseLayoutHeader
+            appName='Railbit'
+            startSlot={(
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-700"
+                aria-label="Open menu"
+                onClick={() => setMobileNavOpen(true)}
+                >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+            content={viewLabels[currentView] || currentView}
+            endSlot={(
+              <Button variant="ghost" size="sm" onClick={() => onNavigate('logout')}>
+                 Logout
+              </Button>
+            )}
+        />
+      }
+      sidebar={
         <DashboardSidebar 
           currentView={currentView}
           onNavigate={setCurrentView}
           onLogout={() => onNavigate('logout')}
           onNavigateToEntry={() => setCurrentView('overview')}
         />
-      </div>
-      
-      <main
-        className={`flex-1 w-full overflow-visible md:overflow-y-auto ${mobileNavOpen ? 'pointer-events-none' : ''}`}
-        aria-hidden={mobileNavOpen}
+      }
       >
-        {currentView === 'overview' && <DashboardOverview onNavigate={setCurrentView} />}
-        {currentView === 'payments' && <PaymentsView />}
-        {currentView === 'create-payment' && <CreatePaymentView />}
-        {currentView === 'pos-mode' && <POSModeView />}
-        {currentView === 'assets' && <AssetsView />}
-        {currentView === 'payouts' && <PayoutsView />}
-        {currentView === 'compliance' && <ComplianceLogsView />}
-        {currentView === 'settings' && <SettingsView />}
-      </main>
-    </div>
+      {currentView === 'overview' && <DashboardOverview onNavigate={setCurrentView} />}
+       {currentView === 'payments' && <PaymentsView />}
+       {currentView === 'create-payment' && <CreatePaymentView />}
+       {currentView === 'pos-mode' && <POSModeView />}
+       {currentView === 'assets' && <AssetsView />}
+       {currentView === 'payouts' && <PayoutsView />}
+       {currentView === 'compliance' && <ComplianceLogsView />}
+       {currentView === 'settings' && <SettingsView />}
+    </DashboardLayout>
   );
 }
