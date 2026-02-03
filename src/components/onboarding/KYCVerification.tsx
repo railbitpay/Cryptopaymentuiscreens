@@ -1,39 +1,66 @@
-import { useState } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { api, KycDocument } from '../../services/api';
 
 interface KYCVerificationProps {
   onNext: () => void;
   onBack: () => void;
 }
+// NOT STARTED
 
 type DocumentStatus = 'not-started' | 'uploaded' | 'in-review' | 'approved';
 
 export function KYCVerification({ onNext, onBack }: KYCVerificationProps) {
-  const [incorporationDoc, setIncorporationDoc] = useState<DocumentStatus>('not-started');
-  const [ownerID, setOwnerID] = useState<DocumentStatus>('not-started');
-  const [proofOfAddress, setProofOfAddress] = useState<DocumentStatus>('not-started');
+  const [documents, setDocuments] = useState<Record<string, KycDocument | null>>({
+    incorporation: null,
+    owner_id: null,
+    proof_of_address: null
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const documents = [
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setLoading(true);
+        const docs = await api.getKycDocuments();
+        const map: Record<string, KycDocument | null> = {
+          incorporation: docs.find(d => d.document_type === 'incorporation') || null,
+          owner_id: docs.find(d => d.document_type === 'owner_id') || null,
+          proof_of_address: docs.find(d => d.document_type === 'proof_of_address') || null
+        };
+        setDocuments(map);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load KYC documents');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDocuments();
+  }, []);
+
+  const documentCards = [
     {
       title: 'Incorporation Documents',
       description: 'Articles of Incorporation or Business Registration',
-      status: incorporationDoc,
-      onUpload: () => setIncorporationDoc('uploaded')
+      status: documents.incorporation?.status || 'not-started',
+      type: 'incorporation'
     },
     {
       title: 'Beneficial Owner ID',
       description: 'Government-issued photo ID of business owners',
-      status: ownerID,
-      onUpload: () => setOwnerID('uploaded')
+      status: documents.owner_id?.status || 'not-started',
+      type: 'owner_id'
     },
     {
       title: 'Proof of Address',
       description: 'Utility bill or bank statement (last 3 months)',
-      status: proofOfAddress,
-      onUpload: () => setProofOfAddress('uploaded')
+      status: documents.proof_of_address?.status || 'not-started',
+      type: 'proof_of_address'
     }
   ];
 
@@ -50,9 +77,34 @@ export function KYCVerification({ onNext, onBack }: KYCVerificationProps) {
     }
   };
 
-  const allUploaded = incorporationDoc !== 'not-started' && 
-                       ownerID !== 'not-started' && 
-                       proofOfAddress !== 'not-started';
+  const allUploaded = documentCards.every((doc) => doc.status !== 'not-started');
+
+  const handleUpload = async (type: string, title: string, file?: File | null) => {
+    if (!file) return;
+    try {
+      setError(null);
+      setLoading(true);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(',')[1];
+      const doc = await api.uploadKycDocument({
+        documentType: type,
+        name: title,
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        data: base64
+      });
+      setDocuments(prev => ({ ...prev, [type]: doc }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload document');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -70,7 +122,7 @@ export function KYCVerification({ onNext, onBack }: KYCVerificationProps) {
         </div>
 
         <div className="space-y-4">
-          {documents.map((doc, index) => (
+          {documentCards.map((doc, index) => (
             <Card key={index} className="p-6 border-2">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -81,20 +133,31 @@ export function KYCVerification({ onNext, onBack }: KYCVerificationProps) {
               </div>
 
               {doc.status === 'not-started' ? (
-                <Button
-                  onClick={doc.onUpload}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Document
-                </Button>
-              ) : doc.status === 'uploaded' ? (
+                <div>
+                  <input
+                    type="file"
+                    id={`kyc-${doc.type}`}
+                    className="hidden"
+                    onChange={(e) => handleUpload(doc.type, doc.title, e.target.files?.[0])}
+                  />
+                  <Button
+                    onClick={() => document.getElementById(`kyc-${doc.type}`)?.click()}
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Document
+                  </Button>
+                </div>
+              ) : doc.status === 'uploaded' || doc.status === 'in-review' || doc.status === 'approved' ? (
                 <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <FileText className="w-5 h-5 text-blue-600" />
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900">document.pdf</p>
-                    <p className="text-xs text-gray-500">Uploaded successfully</p>
+                    <p className="text-sm text-gray-900">{documents[doc.type as keyof typeof documents]?.name || 'document'}</p>
+                    <p className="text-xs text-gray-500">
+                      {doc.status === 'approved' ? 'Approved' : doc.status === 'in-review' ? 'In review' : 'Uploaded'}
+                    </p>
                   </div>
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                 </div>
@@ -103,6 +166,12 @@ export function KYCVerification({ onNext, onBack }: KYCVerificationProps) {
           ))}
         </div>
       </Card>
+
+      {error && (
+        <Card className="p-4 border-red-200 bg-red-50">
+          <p className="text-sm text-red-800">{error}</p>
+        </Card>
+      )}
 
       <Card className="p-6 bg-yellow-50 border-yellow-200">
         <div className="flex items-start gap-3">

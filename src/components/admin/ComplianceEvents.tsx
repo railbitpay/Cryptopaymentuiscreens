@@ -1,48 +1,44 @@
-import { Shield, FileText, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, FileText, Download, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { api, ComplianceEvent, ComplianceStats } from '../../services/api';
 
 export function ComplianceEvents() {
-  const events = [
-    {
-      id: '1',
-      type: 'Large Virtual Currency Transaction Report',
-      date: '2025-11-21',
-      merchant: 'Tech Solutions Inc',
-      amount: 15000,
-      status: 'submitted',
-      reportId: 'LVCTR-2025-11-001'
-    },
-    {
-      id: '2',
-      type: 'Suspicious Transaction Report',
-      date: '2025-11-20',
-      merchant: 'Maple Consulting',
-      amount: null,
-      status: 'under-review',
-      reportId: 'STR-2025-11-002'
-    },
-    {
-      id: '3',
-      type: 'Large Virtual Currency Transaction Report',
-      date: '2025-11-19',
-      merchant: 'Downtown Boutique',
-      amount: 12400,
-      status: 'submitted',
-      reportId: 'LVCTR-2025-11-003'
-    }
-  ];
+  const [events, setEvents] = useState<ComplianceEvent[]>([]);
+  const [stats, setStats] = useState<ComplianceStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = {
-    totalReports: 45,
-    thisMonth: 8,
-    pending: 2,
-    submitted: 43
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [eventList, statData] = await Promise.all([
+          api.getAdminComplianceEvents(),
+          api.getAdminComplianceStats()
+        ]);
+        setEvents(eventList);
+        setStats(statData);
+      } catch (error) {
+        console.error('Failed to fetch compliance events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading || !stats) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -51,7 +47,7 @@ export function ComplianceEvents() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Reports</p>
             <p className="text-2xl text-gray-900">{stats.totalReports}</p>
@@ -93,39 +89,45 @@ export function ComplianceEvents() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((event) => (
-                  <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4 text-sm text-gray-900">{event.date}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{event.type}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-900">{event.merchant}</td>
-                    <td className="py-4 px-4 text-sm text-gray-900">
-                      {event.amount ? `$${event.amount.toLocaleString()}` : '—'}
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-600 font-mono">{event.reportId}</td>
-                    <td className="py-4 px-4">
-                      <Badge className={
-                        event.status === 'submitted'
-                          ? 'bg-green-100 text-green-800 border-green-200'
-                          : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                      }>
-                        {event.status.toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">View</Button>
-                        <Button variant="ghost" size="sm">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
+                {events.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-600">No compliance events</td>
                   </tr>
-                ))}
+                ) : (
+                  events.map((event) => (
+                    <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4 text-sm text-gray-900">{event.date}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-900">{event.type}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-900">{event.merchant}</td>
+                      <td className="py-4 px-4 text-sm text-gray-900">
+                        {event.amount ? `$${event.amount.toLocaleString()}` : '—'}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-600 font-mono">{event.reportId}</td>
+                      <td className="py-4 px-4">
+                        <Badge className={
+                          event.status === 'submitted'
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                        }>
+                          {event.status.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">View</Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

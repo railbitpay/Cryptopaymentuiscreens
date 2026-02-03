@@ -32,13 +32,27 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
           api.getPayments()
         ]);
         setStats(statsData);
-        setRecentPayments(paymentsData.slice(0, 4));
+        setRecentPayments(
+          paymentsData.slice(0, 4).map(p => ({
+            ...p,
+            amount_cad: Number(p.amount_cad) || 0,
+            crypto_amount: Number(p.crypto_amount) || 0
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         // If auth fails, clear user
-        if (error instanceof Error && error.message.includes('401')) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('merchant_data');
+        if (error instanceof Error) {
+          if (error.message.includes('401') || error.message.includes('403')) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('merchant_data');
+            window.location.reload(); // Force reload to show login
+          } else if (error.message.includes('304')) {
+            // 304 error - try again without cache
+            console.warn('Received 304, retrying...');
+            setTimeout(() => fetchData(), 100);
+            return;
+          }
         }
       } finally {
         setLoading(false);
@@ -65,37 +79,50 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
     return `${payment.crypto_amount.toFixed(8)} ${payment.asset.toUpperCase()}`;
   };
 
-  const displayStats = stats ? [
+  const numericStats = stats ? {
+    ...stats,
+    total_volume: Number(stats.total_volume) || 0,
+    transaction_count: Number(stats.transaction_count) || 0,
+    paid_volume: Number(stats.paid_volume) || 0,
+    paid_count: Number(stats.paid_count) || 0,
+    pending_count: Number(stats.pending_count) || 0,
+    balances: stats.balances?.map(b => ({
+      ...b,
+      balance: Number(b.balance) || 0
+    })) || []
+  } : null;
+
+  const displayStats = numericStats ? [
     {
       label: 'Total Volume (CAD)',
-      value: `$${stats.total_volume.toFixed(2)}`,
-      change: stats.paid_volume > 0 ? `${((stats.paid_volume / stats.total_volume) * 100).toFixed(1)}% paid` : '0%',
+      value: `$${numericStats.total_volume.toFixed(2)}`,
+      change: numericStats.total_volume > 0 ? `${((numericStats.paid_volume / numericStats.total_volume) * 100).toFixed(1)}% paid` : '0% paid',
       trend: 'up' as const,
       icon: DollarSign,
       color: 'green'
     },
     {
       label: 'Transactions (30d)',
-      value: stats.transaction_count.toString(),
-      change: `${stats.paid_count} completed`,
+      value: numericStats.transaction_count.toString(),
+      change: `${numericStats.paid_count} completed`,
       trend: 'up' as const,
       icon: Bitcoin,
       color: 'blue'
     },
     {
       label: 'Crypto Balance',
-      value: stats.balances.length > 0 
-        ? `${stats.balances[0].balance.toFixed(4)} ${stats.balances[0].asset.toUpperCase()}`
+      value: numericStats.balances.length > 0 
+        ? `${numericStats.balances[0].balance.toFixed(4)} ${numericStats.balances[0].asset.toUpperCase()}`
         : '0.0000',
-      change: `$${stats.paid_volume.toFixed(2)} CAD`,
+      change: `$${numericStats.paid_volume.toFixed(2)} CAD`,
       trend: 'up' as const,
       icon: Wallet,
       color: 'orange'
     },
     {
       label: 'Pending Payments',
-      value: stats.pending_count.toString(),
-      change: `${stats.paid_count} completed`,
+      value: numericStats.pending_count.toString(),
+      change: `${numericStats.paid_count} completed`,
       trend: 'up' as const,
       icon: TrendingUp,
       color: 'purple'
@@ -103,7 +130,7 @@ export function DashboardOverview({ onNavigate }: DashboardOverviewProps) {
   ] : [];
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Dashboard Overview</h1>
         <p className="text-gray-600">Welcome back! Here's what's happening with your account.</p>

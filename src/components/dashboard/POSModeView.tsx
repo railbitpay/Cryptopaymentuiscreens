@@ -1,18 +1,22 @@
-import { useState } from 'react';
-import { ArrowLeft, Bitcoin, Wallet, Zap, CheckCircle2, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Bitcoin, Wallet, Zap, CheckCircle2, X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { api, Payment } from '../../services/api';
+import { QRCodeSVG } from 'qrcode.react';
 
 type CryptoAsset = 'BTC' | 'ETH' | 'SOL';
-type PaymentStatus = 'idle' | 'pending' | 'success' | 'failed';
+type PaymentStatus = 'idle' | 'pending' | 'success' | 'failed' | 'creating';
 
 export function POSModeView() {
   const [amount, setAmount] = useState('');
   const [selectedAsset, setSelectedAsset] = useState<CryptoAsset | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle');
   const [countdown, setCountdown] = useState(900); // 15 minutes
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const assets = [
     { id: 'BTC' as CryptoAsset, name: 'Bitcoin Lightning', icon: Zap, color: 'orange', rate: 0.000015 },
@@ -20,9 +24,19 @@ export function POSModeView() {
     { id: 'SOL' as CryptoAsset, name: 'Solana', icon: Wallet, color: 'green', rate: 0.045 }
   ];
 
+  const colorClasses: Record<string, { bg: string; text: string; textStrong: string; border: string }> = {
+    orange: { bg: 'bg-orange-100', text: 'text-orange-600', textStrong: 'text-orange-800', border: 'border-orange-200' },
+    purple: { bg: 'bg-purple-100', text: 'text-purple-600', textStrong: 'text-purple-800', border: 'border-purple-200' },
+    green: { bg: 'bg-green-100', text: 'text-green-600', textStrong: 'text-green-800', border: 'border-green-200' }
+  };
+
   const handleNumberClick = (num: string) => {
     if (num === 'C') {
       setAmount('');
+      setPaymentStatus('idle');
+      setSelectedAsset(null);
+      setPayment(null);
+      setError(null);
     } else if (num === '.') {
       if (!amount.includes('.')) {
         setAmount(amount + num);
@@ -32,16 +46,70 @@ export function POSModeView() {
     }
   };
 
-  const handleAssetSelect = (asset: CryptoAsset) => {
+  const handleAssetSelect = async (asset: CryptoAsset) => {
     if (amount && parseFloat(amount) > 0) {
-      setSelectedAsset(asset);
-      setPaymentStatus('pending');
-      // Simulate payment detection
-      setTimeout(() => {
-        setPaymentStatus('success');
-      }, 5000);
+      try {
+        setPaymentStatus('creating');
+        setError(null);
+        const amountNum = parseFloat(amount);
+        const assetLower = asset.toLowerCase() as 'btc' | 'eth' | 'sol';
+        
+        const newPayment = await api.createPayment(amountNum, assetLower, `POS Payment - $${amount}`);
+        const normalized = {
+          ...newPayment,
+          amount_cad: Number(newPayment.amount_cad) || 0,
+          crypto_amount: Number(newPayment.crypto_amount) || 0
+        };
+        setPayment(normalized);
+        setSelectedAsset(asset);
+        setPaymentStatus('pending');
+        setCountdown(Math.max(0, Math.floor((new Date(normalized.expires_at).getTime() - Date.now()) / 1000)));
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create payment');
+        setPaymentStatus('failed');
+      }
     }
   };
+
+  // Countdown timer
+  useEffect(() => {
+    if (paymentStatus === 'pending' && countdown > 0) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            setPaymentStatus('failed');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [paymentStatus, countdown]);
+
+  useEffect(() => {
+    if (paymentStatus !== 'pending' || !payment) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const updatedPayment = await api.getPayment(payment.id);
+        const normalized = {
+          ...updatedPayment,
+          amount_cad: Number(updatedPayment.amount_cad) || 0,
+          crypto_amount: Number(updatedPayment.crypto_amount) || 0
+        };
+        if (normalized.status === 'paid') {
+          setPayment(normalized);
+          setPaymentStatus('success');
+        } else if (new Date(normalized.expires_at) < new Date()) {
+          setPaymentStatus('failed');
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 3000);
+    return () => clearInterval(pollInterval);
+  }, [paymentStatus, payment?.id]);
 
   const handleReset = () => {
     setAmount('');
@@ -50,16 +118,22 @@ export function POSModeView() {
     setCountdown(900);
   };
 
-  const getCryptoAmount = (asset: CryptoAsset) => {
-    const selected = assets.find(a => a.id === asset);
-    if (!selected || !amount) return '0';
-    return (parseFloat(amount) * selected.rate).toFixed(8);
-  };
-
-  if (paymentStatus === 'success') {
+  if (paymentStatus === 'creating') {
     return (
-      <div className="h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-8">
-        <Card className="max-w-lg w-full p-12 text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-lg w-full p-6 sm:p-12 text-center">
+          <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
+          <h2 className="text-gray-900 mb-2">Creating Payment...</h2>
+          <p className="text-gray-600">Please wait</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (paymentStatus === 'success' && payment) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-lg w-full p-6 sm:p-12 text-center">
           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-16 h-16 text-green-600" />
           </div>
@@ -68,15 +142,15 @@ export function POSModeView() {
           <div className="space-y-3 mb-8">
             <div className="flex justify-between py-2 border-b border-gray-200">
               <span className="text-gray-600">Amount (CAD)</span>
-              <span className="text-gray-900">${amount}</span>
+              <span className="text-gray-900">${payment.amount_cad.toFixed(2)}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-200">
               <span className="text-gray-600">Paid with</span>
-              <span className="text-gray-900">{selectedAsset}</span>
+              <span className="text-gray-900">{payment.asset.toUpperCase()}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-gray-600">Crypto Amount</span>
-              <span className="text-gray-900">{getCryptoAmount(selectedAsset!)} {selectedAsset}</span>
+              <span className="text-gray-900">{payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}</span>
             </div>
           </div>
           <Button onClick={handleReset} className="w-full h-14 bg-green-600 hover:bg-green-700">
@@ -87,13 +161,13 @@ export function POSModeView() {
     );
   }
 
-  if (paymentStatus === 'pending' && selectedAsset) {
+  if (paymentStatus === 'pending' && selectedAsset && payment) {
     const asset = assets.find(a => a.id === selectedAsset)!;
     const Icon = asset.icon;
 
     return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center p-8">
-        <Card className="max-w-2xl w-full p-12">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+        <Card className="max-w-2xl w-full p-6 sm:p-12">
           <div className="flex justify-between items-start mb-8">
             <div>
               <h2 className="text-gray-900 mb-1">Waiting for Payment</h2>
@@ -104,30 +178,24 @@ export function POSModeView() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-900 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* QR Code */}
             <div className="flex flex-col items-center">
-              <div className="w-full aspect-square bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center mb-4">
-                {/* QR Code Placeholder */}
-                <svg viewBox="0 0 256 256" className="w-full h-full p-8">
-                  <rect width="256" height="256" fill="white"/>
-                  <g fill="black">
-                    {Array.from({ length: 8 }).map((_, i) =>
-                      Array.from({ length: 8 }).map((_, j) => (
-                        <rect
-                          key={`${i}-${j}`}
-                          x={i * 32}
-                          y={j * 32}
-                          width="28"
-                          height="28"
-                          fill={(i + j) % 2 === 0 ? 'black' : 'white'}
-                        />
-                      ))
-                    )}
-                  </g>
-                </svg>
+              <div className="w-full aspect-square bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center mb-4 p-4">
+                <QRCodeSVG
+                  value={payment.address}
+                  size={256}
+                  level="H"
+                  includeMargin={false}
+                />
               </div>
-              <Badge className={`bg-${asset.color}-100 text-${asset.color}-800 border-${asset.color}-200`}>
+              <Badge className={`${colorClasses[asset.color].bg} ${colorClasses[asset.color].textStrong} ${colorClasses[asset.color].border}`}>
                 <Icon className="w-4 h-4 mr-2" />
                 {asset.name}
               </Badge>
@@ -137,13 +205,17 @@ export function POSModeView() {
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-1">Amount Due (CAD)</p>
-                <p className="text-3xl text-gray-900">${amount}</p>
+                <p className="text-3xl text-gray-900">${payment.amount_cad.toFixed(2)}</p>
               </div>
 
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Crypto Amount</span>
-                  <span className="text-sm text-gray-900">{getCryptoAmount(selectedAsset)} {selectedAsset}</span>
+                  <span className="text-sm text-gray-900">{payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Address</span>
+                  <span className="text-sm text-gray-900 font-mono text-xs break-all">{payment.address.substring(0, 20)}...</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Network</span>
@@ -174,8 +246,8 @@ export function POSModeView() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="max-w-5xl w-full grid md:grid-cols-2 gap-8">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-8">
+      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         {/* Left: Amount Entry */}
         <Card className="p-8">
           <h2 className="text-gray-900 mb-6">Enter Amount (CAD)</h2>
@@ -191,7 +263,7 @@ export function POSModeView() {
             </div>
 
             {/* Number Pad */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'C'].map((num) => (
                 <Button
                   key={num}
@@ -228,8 +300,8 @@ export function POSModeView() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 bg-${asset.color}-100 rounded-full flex items-center justify-center`}>
-                        <Icon className={`w-6 h-6 text-${asset.color}-600`} />
+                      <div className={`w-12 h-12 ${colorClasses[asset.color].bg} rounded-full flex items-center justify-center`}>
+                        <Icon className={`w-6 h-6 ${colorClasses[asset.color].text}`} />
                       </div>
                       <div>
                         <p className="text-gray-900">{asset.name}</p>

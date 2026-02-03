@@ -31,7 +31,11 @@ export function CreatePaymentView() {
       }
 
       const newPayment = await api.createPayment(amountNum, asset, description || undefined);
-      setPayment(newPayment);
+      setPayment({
+        ...newPayment,
+        amount_cad: Number(newPayment.amount_cad) || 0,
+        crypto_amount: Number(newPayment.crypto_amount) || 0
+      });
       setPaymentCreated(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create payment');
@@ -67,10 +71,12 @@ export function CreatePaymentView() {
 
   if (paymentCreated && payment) {
     const timeRemaining = formatTimeRemaining(payment.expires_at);
+    const amountCad = Number(payment.amount_cad) || 0;
+    const cryptoAmount = Number(payment.crypto_amount) || 0;
     
     return (
-      <div className="p-8 max-w-3xl mx-auto">
-        <Card className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
+        <Card className="p-6 sm:p-8">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -80,8 +86,8 @@ export function CreatePaymentView() {
           </div>
 
           {/* QR Code */}
-          <div className="bg-white border-2 border-gray-200 rounded-xl p-8 mb-6">
-            <div className="w-64 h-64 mx-auto bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center p-4">
+          <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-8 mb-6">
+            <div className="w-48 h-48 sm:w-64 sm:h-64 mx-auto bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center p-4">
               <QRCodeSVG 
                 value={payment.payment_url || `http://localhost:5173/payment/${payment.id}`}
                 size={256}
@@ -90,7 +96,7 @@ export function CreatePaymentView() {
               />
             </div>
             <div className="text-center mt-4">
-              <p className="text-2xl text-gray-900 mb-1">${payment.amount_cad.toFixed(2)} CAD</p>
+              <p className="text-2xl text-gray-900 mb-1">${amountCad.toFixed(2)} CAD</p>
               <p className="text-sm text-gray-600">{payment.description || 'No description'}</p>
             </div>
           </div>
@@ -104,7 +110,7 @@ export function CreatePaymentView() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button onClick={handleCopy} variant="outline">
                 {copied ? (
                   <>
@@ -138,11 +144,11 @@ export function CreatePaymentView() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount</span>
-                <span className="text-gray-900">${payment.amount_cad.toFixed(2)} CAD</span>
+                <span className="text-gray-900">${amountCad.toFixed(2)} CAD</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Crypto Amount</span>
-                <span className="text-gray-900">{payment.crypto_amount.toFixed(8)} {payment.asset.toUpperCase()}</span>
+                <span className="text-gray-900">{cryptoAmount.toFixed(8)} {payment.asset.toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Expires</span>
@@ -168,7 +174,7 @@ export function CreatePaymentView() {
   }
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Create Payment</h1>
         <p className="text-gray-600">Generate a new crypto payment request</p>
@@ -181,7 +187,7 @@ export function CreatePaymentView() {
         </Alert>
       )}
 
-      <Card className="p-8">
+      <Card className="p-6 sm:p-8">
         <form onSubmit={handleCreatePayment} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (CAD)</Label>

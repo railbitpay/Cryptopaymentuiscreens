@@ -4,7 +4,34 @@ import { api, Merchant } from '../services/api';
 interface AuthContextType {
   user: Merchant | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, businessName: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    businessName: string,
+    extra?: {
+      businessNumber?: string;
+      industry?: string;
+      phone?: string;
+      addressLine1?: string;
+      city?: string;
+      province?: string;
+      postalCode?: string;
+      twoFactorEnabled?: boolean;
+      settlementMode?: 'cad' | 'crypto';
+      settlementAssets?: string[];
+      bankName?: string;
+      bankTransit?: string;
+      bankInstitution?: string;
+      bankAccount?: string;
+      notifications?: {
+        payment_received: boolean;
+        payment_failed: boolean;
+        weekly_summary: boolean;
+        compliance_alerts: boolean;
+        marketing_updates: boolean;
+      };
+    }
+  ) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   loading: boolean;
@@ -50,8 +77,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(merchant);
   };
 
-  const register = async (email: string, password: string, businessName: string) => {
-    const { token, merchant } = await api.register(email, password, businessName);
+  const register = async (
+    email: string,
+    password: string,
+    businessName: string,
+    extra?: {
+      businessNumber?: string;
+      industry?: string;
+      phone?: string;
+      addressLine1?: string;
+      city?: string;
+      province?: string;
+      postalCode?: string;
+      twoFactorEnabled?: boolean;
+      settlementMode?: 'cad' | 'crypto';
+      settlementAssets?: string[];
+      bankName?: string;
+      bankTransit?: string;
+      bankInstitution?: string;
+      bankAccount?: string;
+      notifications?: {
+        payment_received: boolean;
+        payment_failed: boolean;
+        weekly_summary: boolean;
+        compliance_alerts: boolean;
+        marketing_updates: boolean;
+      };
+    }
+  ) => {
+    const { token, merchant } = await api.register(email, password, businessName, extra);
     localStorage.setItem('auth_token', token);
     localStorage.setItem('merchant_data', JSON.stringify(merchant));
     setUser(merchant);
@@ -86,4 +140,3 @@ export function useAuth() {
   }
   return context;
 }
-

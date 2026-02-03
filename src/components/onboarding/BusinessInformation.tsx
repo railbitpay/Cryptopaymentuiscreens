@@ -7,7 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Building2 } from 'lucide-react';
 
 interface BusinessInformationProps {
-  onNext: (data: { businessName: string }) => void;
+  onNext: (data: {
+    businessName: string;
+    businessNumber: string;
+    industry: string;
+    addressLine1: string;
+    city: string;
+    province: string;
+    postalCode: string;
+  }) => void;
   onBack: () => void;
 }
 
@@ -22,9 +30,19 @@ export function BusinessInformation({ onNext, onBack }: BusinessInformationProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (businessName) {
-      onNext({ businessName });
+    // Validate all required fields
+    if (!businessName || !craNumber || !industry || !address || !city || !province || !postalCode) {
+      return; // HTML5 validation will show required field messages
     }
+    onNext({
+      businessName,
+      businessNumber: craNumber,
+      industry,
+      addressLine1: address,
+      city,
+      province,
+      postalCode
+    });
   };
 
   const provinces = [

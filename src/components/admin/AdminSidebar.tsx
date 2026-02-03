@@ -1,5 +1,6 @@
 import { Store, Activity, Shield, Server, LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useAuth } from '../../contexts/AuthContext';
 import type { AdminView } from './AdminBackOffice';
 
 interface AdminSidebarProps {
@@ -7,9 +8,17 @@ interface AdminSidebarProps {
   onNavigate: (view: AdminView) => void;
   onLogout: () => void;
   onNavigateToEntry?: () => void;
+  onItemSelect?: () => void;
 }
 
-export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry }: AdminSidebarProps) {
+export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEntry, onItemSelect }: AdminSidebarProps) {
+  const { logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout(); // Clear authentication state
+    onLogout(); // Navigate to logout page
+    onItemSelect?.();
+  };
   const menuItems = [
     { id: 'merchants' as AdminView, label: 'Merchants', icon: Store },
     { id: 'monitoring' as AdminView, label: 'Transaction Monitoring', icon: Activity },
@@ -18,11 +27,14 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
   ];
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
+    <div className="w-full md:w-64 bg-gray-900 text-white flex flex-col md:sticky md:top-0 md:h-screen">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
         <button
-          onClick={onNavigateToEntry}
+          onClick={() => {
+            onNavigateToEntry?.();
+            onItemSelect?.();
+          }}
           className="flex items-center gap-2 w-full hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -34,7 +46,7 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-x-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id || 
@@ -43,7 +55,10 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id);
+                onItemSelect?.();
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-gray-800 text-white'
@@ -61,7 +76,7 @@ export function AdminSidebar({ currentView, onNavigate, onLogout, onNavigateToEn
       <div className="p-4 border-t border-gray-800">
         <Button
           variant="ghost"
-          onClick={onLogout}
+          onClick={handleLogout}
           className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
         >
           <LogOut className="w-5 h-5 mr-3" />

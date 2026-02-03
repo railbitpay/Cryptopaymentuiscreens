@@ -1,81 +1,42 @@
-import { Activity, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, TrendingUp, AlertTriangle, DollarSign, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { api, AdminMonitoringResponse } from '../../services/api';
 
 export function TransactionMonitoring() {
-  const stats = {
-    totalToday: 1234567.89,
-    countToday: 456,
-    largeTransactions: 12,
-    suspiciousPatterns: 3
-  };
+  const [data, setData] = useState<AdminMonitoringResponse | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const recentTransactions = [
-    {
-      id: '1',
-      merchantName: 'Tech Solutions Inc',
-      amount: 15000,
-      asset: 'BTC',
-      cadValue: 15000,
-      timestamp: '2025-11-21 14:32:15',
-      flag: 'large-transaction',
-      status: 'completed'
-    },
-    {
-      id: '2',
-      merchantName: 'My Coffee Shop',
-      amount: 0.5,
-      asset: 'ETH',
-      cadValue: 1850,
-      timestamp: '2025-11-21 14:28:42',
-      flag: null,
-      status: 'completed'
-    },
-    {
-      id: '3',
-      merchantName: 'Maple Consulting',
-      amount: 25,
-      asset: 'SOL',
-      cadValue: 1125,
-      timestamp: '2025-11-21 14:15:33',
-      flag: 'velocity',
-      status: 'completed'
-    },
-    {
-      id: '4',
-      merchantName: 'Downtown Boutique',
-      amount: 0.2,
-      asset: 'BTC',
-      cadValue: 12400,
-      timestamp: '2025-11-21 14:05:12',
-      flag: 'large-transaction',
-      status: 'completed'
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const result = await api.getAdminMonitoring();
+        setData(result);
+      } catch (error) {
+        console.error('Failed to fetch monitoring data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const largeTransactions = [
-    {
-      id: '1',
-      merchantName: 'Tech Solutions Inc',
-      amount: 15000,
-      asset: 'BTC',
-      timestamp: '2025-11-21 14:32:15',
-      reported: true
-    },
-    {
-      id: '2',
-      merchantName: 'Downtown Boutique',
-      amount: 12400,
-      asset: 'BTC',
-      timestamp: '2025-11-21 14:05:12',
-      reported: true
-    }
-  ];
+  if (loading || !data) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  const { stats, recentTransactions, largeTransactions } = data;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -84,7 +45,7 @@ export function TransactionMonitoring() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-600">Volume Today</p>
@@ -134,7 +95,7 @@ export function TransactionMonitoring() {
 
         {/* Main Content */}
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="flex flex-wrap gap-2">
             <TabsTrigger value="all">All Transactions</TabsTrigger>
             <TabsTrigger value="large">Large Transactions</TabsTrigger>
             <TabsTrigger value="flagged">Flagged</TabsTrigger>

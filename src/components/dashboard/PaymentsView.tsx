@@ -17,7 +17,13 @@ export function PaymentsView() {
     const fetchPayments = async () => {
       try {
         const data = await api.getPayments();
-        setPayments(data);
+        setPayments(
+          data.map((p) => ({
+            ...p,
+            amount_cad: Number(p.amount_cad) || 0,
+            crypto_amount: Number(p.crypto_amount) || 0
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch payments:', error);
       } finally {
@@ -34,71 +40,8 @@ export function PaymentsView() {
       payment.address.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedTab === 'all') return matchesSearch;
-    return matchesSearch && payment.asset === selectedTab;
+    return matchesSearch && payment.asset.toLowerCase() === selectedTab.toLowerCase();
   });
-
-  const mockPayments = [
-    {
-      id: 'PAY-5678',
-      asset: 'BTC Lightning',
-      amount: '0.025',
-      cadValue: '$1,450.00',
-      status: 'paid',
-      customer: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-      date: '2025-11-21 14:30',
-      txHash: '3a4b5c...'
-    },
-    {
-      id: 'PAY-5677',
-      asset: 'ETH',
-      amount: '2.5',
-      cadValue: '$5,200.00',
-      status: 'paid',
-      customer: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
-      date: '2025-11-21 09:15',
-      txHash: '9f8e7d...'
-    },
-    {
-      id: 'PAY-5676',
-      asset: 'SOL',
-      amount: '100',
-      cadValue: '$12,500.00',
-      status: 'pending',
-      customer: 'SoLa9k3mPqRtXx7Wy6Bz4Nv8Hj5Fg2Kl1',
-      date: '2025-11-20 18:45',
-      txHash: 'pending'
-    },
-    {
-      id: 'PAY-5675',
-      asset: 'BTC Lightning',
-      amount: '0.05',
-      cadValue: '$2,900.00',
-      status: 'paid',
-      customer: 'bc1q34aq5drpuwy3wgl9lhup9892qnqp82lar34r',
-      date: '2025-11-20 16:20',
-      txHash: '2c3d4e...'
-    },
-    {
-      id: 'PAY-5674',
-      asset: 'ETH',
-      amount: '1.2',
-      cadValue: '$2,496.00',
-      status: 'failed',
-      customer: '0x8ba1f109551bd432803012645c136a87a8db1bc8',
-      date: '2025-11-20 11:30',
-      txHash: 'failed'
-    },
-    {
-      id: 'PAY-5673',
-      asset: 'SOL',
-      amount: '50',
-      cadValue: '$6,250.00',
-      status: 'paid',
-      customer: 'SoLb2k4nPqRtXx7Wy6Bz4Nv8Hj5Fg2Kl2',
-      date: '2025-11-19 22:10',
-      txHash: '1a2b3c...'
-    }
-  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -141,7 +84,7 @@ export function PaymentsView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Payments</h1>
         <p className="text-gray-600">View and manage all crypto payment transactions</p>
@@ -149,7 +92,7 @@ export function PaymentsView() {
 
       <Card className="p-6">
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
@@ -174,7 +117,7 @@ export function PaymentsView() {
 
         {/* Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex flex-wrap gap-2">
             <TabsTrigger value="all">All Payments</TabsTrigger>
             <TabsTrigger value="btc">BTC Lightning</TabsTrigger>
             <TabsTrigger value="eth">Ethereum</TabsTrigger>
@@ -246,7 +189,7 @@ export function PaymentsView() {
         </Tabs>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600">
             Showing {filteredPayments.length} of {payments.length} payments
           </p>

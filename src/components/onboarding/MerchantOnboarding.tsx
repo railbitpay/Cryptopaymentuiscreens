@@ -1,12 +1,14 @@
+import React from 'react'
 import { useState } from 'react';
 import { CreateAccount } from './CreateAccount';
 import { BusinessInformation } from './BusinessInformation';
 import { KYCVerification } from './KYCVerification';
 import { SettlementPreferences } from './SettlementPreferences';
 import { OnboardingSuccess } from './OnboardingSuccess';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import type { AppView } from '../../App';
 
 interface MerchantOnboardingProps {
@@ -19,10 +21,19 @@ export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardingProps) {
   const { register } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [onboardingData, setOnboardingData] = useState<{
     email?: string;
     password?: string;
     businessName?: string;
+    businessNumber?: string;
+    industry?: string;
+    addressLine1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    enable2FA?: boolean;
   }>({});
 
   const steps = [
@@ -33,21 +44,116 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
     { id: 5, title: 'Complete', description: 'Ready to go' }
   ];
 
-  const handleNext = async (data?: { email?: string; password?: string; businessName?: string }) => {
+  const handleNext = async (data?: {
+    email?: string;
+    password?: string;
+    businessName?: string;
+    businessNumber?: string;
+    industry?: string;
+    addressLine1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    enable2FA?: boolean;
+    settlementMode?: 'cad' | 'crypto';
+    settlementAssets?: string[];
+    bankName?: string;
+    bankTransit?: string;
+    bankInstitution?: string;
+    bankAccount?: string;
+  }) => {
+    setError(null);
+    
+    // Update onboarding data first
+    const updatedData = data ? { ...onboardingData, ...data } : onboardingData;
+    
+    // Register after step 2 (when we have email, password, and business name)
+    if (currentStep === 2) {
+      // Check if we have all required data for registration
+      const email = updatedData.email || onboardingData.email;
+      const password = updatedData.password || onboardingData.password;
+      const businessName = updatedData.businessName || data?.businessName;
+      
+      if (email && password && businessName) {
+        try {
+          setLoading(true);
+          await register(email, password, businessName, {
+            businessNumber: updatedData.businessNumber,
+            industry: updatedData.industry,
+            addressLine1: updatedData.addressLine1,
+            city: updatedData.city,
+            province: updatedData.province,
+            postalCode: updatedData.postalCode,
+            twoFactorEnabled: updatedData.enable2FA
+          });
+          setOnboardingData({
+            email,
+            password,
+            businessName,
+            businessNumber: updatedData.businessNumber,
+            industry: updatedData.industry,
+            addressLine1: updatedData.addressLine1,
+            city: updatedData.city,
+            province: updatedData.province,
+            postalCode: updatedData.postalCode,
+            enable2FA: updatedData.enable2FA
+          });
+          setCurrentStep(3);
+          setLoading(false);
+          return;
+        } catch (err) {
+          console.error('Registration failed:', err);
+          const errorMessage = err instanceof Error 
+            ? err.message 
+            : 'Registration failed. Please try again.';
+          setError(errorMessage);
+          setLoading(false);
+          return; // Don't proceed if registration fails
+        }
+      } else {
+        // Missing required data - this shouldn't happen if form validation works
+        setError('Missing required information. Please go back and complete all steps.');
+        return;
+      }
+    }
+    
+    // For step 1, save email and password
+    if (currentStep === 1 && data) {
+      setOnboardingData(prev => ({ 
+        ...prev, 
+        email: data.email, 
+        password: data.password,
+        enable2FA: data.enable2FA 
+      }));
+    }
+    
+    // For other steps, just update data and move forward
     if (data) {
       setOnboardingData(prev => ({ ...prev, ...data }));
     }
-
-    // Register after step 2 (when we have email, password, and business name)
-    if (currentStep === 2 && onboardingData.email && onboardingData.password && data?.businessName) {
-      try {
-        await register(onboardingData.email, onboardingData.password, data.businessName);
-        setCurrentStep(3);
-      } catch (error) {
-        console.error('Registration failed:', error);
-        // Could show error message here
+    
+    if (currentStep < 5) {
+      if (currentStep === 4 && data?.settlementMode) {
+        try {
+          setLoading(true);
+          setError(null);
+          await api.updateSettlement({
+            settlement_mode: data.settlementMode,
+            settlement_assets: data.settlementAssets || [],
+            bank_name: data.bankName,
+            bank_transit: data.bankTransit,
+            bank_institution: data.bankInstitution,
+            bank_account: data.bankAccount
+          });
+          setLoading(false);
+        } catch (err) {
+          console.error('Settlement update error:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Failed to save settlement preferences';
+          setError(errorMessage);
+          setLoading(false);
+          return; // Don't proceed if settlement update fails
+        }
       }
-    } else if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as OnboardingStep);
     }
   };
@@ -109,6 +215,22 @@ export function MerchantOnboarding({ onComplete, onNavigate }: MerchantOnboardin
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-900 mb-1">Error</p>
+            <p className="text-sm text-red-800">{error}</p>
+            {error.includes('Cannot connect to server') && (
+              <p className="text-xs text-red-700 mt-2">
+                Make sure the backend server is running. Check the terminal where you ran <code className="bg-red-100 px-1 rounded">npm run dev</code> in the backend folder.
+              </p>
+            )}
+          </div>
+        )}
+        {loading && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-900">Registering your account...</p>
+          </div>
+        )}
         {currentStep === 1 && (
           <CreateAccount 
             onNext={(data) => handleNext(data)} 

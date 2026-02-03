@@ -1,9 +1,11 @@
-import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, FileText, Download, CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
+import { api } from '../../services/api';
 
 interface MerchantDetailProps {
   merchantId: string;
@@ -11,48 +13,106 @@ interface MerchantDetailProps {
 }
 
 export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
-  // Mock merchant data
-  const merchant = {
-    id: merchantId,
-    businessName: 'My Coffee Shop',
-    email: 'contact@mycoffeeshop.ca',
-    phone: '+1 (416) 555-0123',
-    craNumber: '123456789RC0001',
-    address: '123 Main St, Toronto, ON M5V 1A1',
-    industry: 'Food & Beverage',
-    kycStatus: 'approved',
-    joinDate: '2025-10-15',
-    volumeCAD: 45678.90,
-    transactionCount: 234,
-    amlFlags: 0,
-    documents: [
-      { name: 'Business Incorporation', status: 'approved', uploadDate: '2025-10-10', url: '#' },
-      { name: 'Beneficial Owner ID', status: 'approved', uploadDate: '2025-10-10', url: '#' },
-      { name: 'Proof of Address', status: 'approved', uploadDate: '2025-10-12', url: '#' }
-    ],
-    beneficialOwners: [
-      { name: 'John Doe', role: 'Owner', ownership: '100%', verified: true }
-    ],
-    notes: [
-      { date: '2025-10-15', author: 'Admin', text: 'Initial KYC review completed. All documents verified.' },
-      { date: '2025-10-16', author: 'Compliance', text: 'Approved for production use.' }
-    ]
+  const [merchant, setMerchant] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+
+  useEffect(() => {
+    const fetchMerchant = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getMerchant(merchantId);
+        setMerchant(data);
+      } catch (error) {
+        console.error('Failed to fetch merchant:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMerchant();
+  }, [merchantId]);
+
+  const handleApprove = async () => {
+    if (!merchant) return;
+    try {
+      setUpdating(true);
+      await api.updateMerchantKycStatus(merchantId, 'approved');
+      setMerchant({ ...merchant, kyc_status: 'approved' });
+    } catch (error) {
+      console.error('Failed to update KYC status:', error);
+      alert('Failed to update KYC status');
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const handleApprove = () => {
-    console.log('Approve merchant');
+  const handleReject = async () => {
+    if (!merchant) return;
+    if (!confirm('Are you sure you want to reject this merchant?')) return;
+    try {
+      setUpdating(true);
+      await api.updateMerchantKycStatus(merchantId, 'rejected');
+      setMerchant({ ...merchant, kyc_status: 'rejected' });
+    } catch (error) {
+      console.error('Failed to update KYC status:', error);
+      alert('Failed to update KYC status');
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const handleReject = () => {
-    console.log('Reject merchant');
+  const handleRequestMoreInfo = async () => {
+    if (!merchant) return;
+    try {
+      setUpdating(true);
+      await api.updateMerchantKycStatus(merchantId, 'in-review');
+      setMerchant({ ...merchant, kyc_status: 'in-review' });
+    } catch (error) {
+      console.error('Failed to update KYC status:', error);
+      alert('Failed to update KYC status');
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const handleRequestMoreInfo = () => {
-    console.log('Request more info');
+  const handleAddNote = async () => {
+    if (!merchant) return;
+    const text = prompt('Enter admin note');
+    if (!text) return;
+    try {
+      setNoteSubmitting(true);
+      const newNote = await api.addMerchantNote(merchantId, text);
+      setMerchant({ ...merchant, notes: [newNote, ...(merchant.notes || [])] });
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      alert('Failed to add note');
+    } finally {
+      setNoteSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!merchant) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <Alert>
+          <AlertDescription>Merchant not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -62,52 +122,40 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
           </Button>
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-gray-900">{merchant.businessName}</h1>
+              <h1 className="text-gray-900">{merchant.business_name || 'N/A'}</h1>
               <p className="text-gray-600 mt-1">Merchant ID: {merchant.id}</p>
             </div>
             <Badge className={
-              merchant.kycStatus === 'approved'
+              merchant.kyc_status === 'approved'
                 ? 'bg-green-100 text-green-800 border-green-200'
-                : merchant.kycStatus === 'in-review'
+                : merchant.kyc_status === 'in-review'
                 ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
                 : 'bg-red-100 text-red-800 border-red-200'
             }>
-              {merchant.kycStatus.toUpperCase()}
+              {merchant.kyc_status.toUpperCase()}
             </Badge>
           </div>
         </div>
 
-        {/* AML Flags Alert */}
-        {merchant.amlFlags > 0 && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-900">
-              This merchant has {merchant.amlFlags} active AML flag(s) that require review
-            </AlertDescription>
-          </Alert>
-        )}
-
         {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Volume</p>
             <p className="text-2xl text-gray-900">
-              ${merchant.volumeCAD.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+              ${(merchant.total_volume || 0).toLocaleString('en-CA', { minimumFractionDigits: 2 })}
             </p>
           </Card>
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Transactions</p>
-            <p className="text-2xl text-gray-900">{merchant.transactionCount}</p>
+            <p className="text-2xl text-gray-900">{merchant.transaction_count || 0}</p>
           </Card>
           <Card className="p-6">
             <p className="text-sm text-gray-600 mb-1">Member Since</p>
-            <p className="text-2xl text-gray-900">{merchant.joinDate}</p>
+            <p className="text-2xl text-gray-900">{new Date(merchant.created_at).toLocaleDateString()}</p>
           </Card>
           <Card className="p-6">
-            <p className="text-sm text-gray-600 mb-1">AML Flags</p>
-            <p className={`text-2xl ${merchant.amlFlags > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {merchant.amlFlags}
-            </p>
+            <p className="text-sm text-gray-600 mb-1">Status</p>
+            <p className="text-2xl text-gray-900">{merchant.kyc_status}</p>
           </Card>
         </div>
 
@@ -124,14 +172,14 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
           <TabsContent value="info" className="mt-6">
             <Card className="p-6">
               <h3 className="text-gray-900 mb-6">Business Details</h3>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm text-gray-600">Business Name</label>
-                  <p className="text-gray-900 mt-1">{merchant.businessName}</p>
+                  <p className="text-gray-900 mt-1">{merchant.business_name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">CRA Business Number</label>
-                  <p className="text-gray-900 mt-1 font-mono">{merchant.craNumber}</p>
+                  <p className="text-gray-900 mt-1 font-mono">{merchant.business_number || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Email</label>
@@ -139,19 +187,21 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Phone</label>
-                  <p className="text-gray-900 mt-1">{merchant.phone}</p>
+                  <p className="text-gray-900 mt-1">{merchant.phone || '—'}</p>
                 </div>
                 <div className="col-span-2">
                   <label className="text-sm text-gray-600">Address</label>
-                  <p className="text-gray-900 mt-1">{merchant.address}</p>
+                  <p className="text-gray-900 mt-1">
+                    {merchant.address_line1 || '—'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Industry</label>
-                  <p className="text-gray-900 mt-1">{merchant.industry}</p>
+                  <p className="text-gray-900 mt-1">{merchant.industry || '—'}</p>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600">Join Date</label>
-                  <p className="text-gray-900 mt-1">{merchant.joinDate}</p>
+                  <p className="text-gray-900 mt-1">{new Date(merchant.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
             </Card>
@@ -159,7 +209,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
             <Card className="p-6 mt-6">
               <h3 className="text-gray-900 mb-6">Beneficial Owners</h3>
               <div className="space-y-4">
-                {merchant.beneficialOwners.map((owner, index) => (
+                {(merchant.beneficialOwners || []).map((owner, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-gray-900">{owner.name}</p>
@@ -184,7 +234,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                 <h3 className="text-gray-900">Uploaded Documents</h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {merchant.documents.map((doc, index) => (
+                {(merchant.documents || []).map((doc, index) => (
                   <div key={index} className="p-6 flex items-center justify-between hover:bg-gray-50">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -205,7 +255,11 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
                       }>
                         {doc.status.toUpperCase()}
                       </Badge>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(`${apiBase}/admin/kyc/documents/${doc.id}/download`, '_blank')}
+                      >
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </Button>
@@ -216,7 +270,7 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
             </Card>
 
             {/* Actions */}
-            {merchant.kycStatus === 'in-review' && (
+            {merchant.kyc_status === 'in-review' && (
               <div className="mt-6 flex gap-3">
                 <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700">
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -246,11 +300,13 @@ export function MerchantDetail({ merchantId, onBack }: MerchantDetailProps) {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-gray-900">Admin Notes & Activity Log</h3>
-                  <Button variant="outline" size="sm">Add Note</Button>
+                  <Button variant="outline" size="sm" onClick={handleAddNote} disabled={noteSubmitting}>
+                    {noteSubmitting ? 'Saving...' : 'Add Note'}
+                  </Button>
                 </div>
               </div>
               <div className="divide-y divide-gray-200">
-                {merchant.notes.map((note, index) => (
+                {(merchant.notes || []).map((note, index) => (
                   <div key={index} className="p-6">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
