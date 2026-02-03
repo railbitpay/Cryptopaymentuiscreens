@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowRight, Building2, ShoppingBag, CreditCard, Shield, Code, Sparkles, Wallet, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Building2, ShoppingBag, CreditCard, Shield, Code, Sparkles, Wallet, Mail, Lock, Loader2, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -21,6 +21,32 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  // Check backend status on mount and periodically
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+        const response = await fetch(`${API_BASE}/health`, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          setBackendStatus('online');
+        } else {
+          setBackendStatus('offline');
+        }
+      } catch (err) {
+        setBackendStatus('offline');
+      }
+    };
+
+    checkBackend();
+    // Check every 5 seconds
+    const interval = setInterval(checkBackend, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +105,28 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Backend Status Indicator - Fixed position top right */}
+      <div className="fixed top-4 right-4 z-50">
+        {backendStatus === 'checking' && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg shadow-sm border border-gray-200">
+            <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+            <span className="text-sm text-gray-600">Checking backend...</span>
+          </div>
+        )}
+        {backendStatus === 'online' && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-100 border border-green-200 rounded-lg shadow-sm">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-green-700 font-medium">Backend is running</span>
+          </div>
+        )}
+        {backendStatus === 'offline' && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-100 border border-red-200 rounded-lg shadow-sm">
+            <XCircle className="w-4 h-4 text-red-600" />
+            <span className="text-sm text-red-700 font-medium">Backend offline</span>
+          </div>
+        )}
+      </div>
+
       {/* Navigation Header */}
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -246,6 +294,25 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
               Enter your credentials to access your merchant dashboard
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Backend Status in Login Dialog */}
+          {backendStatus === 'online' && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-900">
+                Backend is running and ready
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {backendStatus === 'offline' && (
+            <Alert className="border-red-200 bg-red-50">
+              <XCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-900">
+                Cannot connect to backend. Please make sure the backend is running at http://localhost:3001/api
+              </AlertDescription>
+            </Alert>
+          )}
           
           {error && (
             <Alert className="border-red-200 bg-red-50">

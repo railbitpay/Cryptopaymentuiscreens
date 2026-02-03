@@ -448,7 +448,7 @@ const initializeDatabase = async () => {
       ];
 
       alterColumns.forEach((stmt) => {
-        db.run(stmt, () => {});
+        db.run(stmt, () => { });
       });
     });
     console.log('✅ SQLite tables initialized');
@@ -473,6 +473,16 @@ app.get("/", (req, res) => {
   res.status(200).send("Railbit API is running ✅");
 });
 
+// Health check endpoint for frontend status checking
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Backend is running',
+    timestamp: new Date().toISOString(),
+    database: usePostgreSQL ? 'PostgreSQL' : 'SQLite'
+  });
+});
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -494,7 +504,7 @@ const authenticateToken = (req, res, next) => {
 // Helper function to convert SQLite-style queries (?) to PostgreSQL-style ($1, $2, ...)
 const convertQuery = (query) => {
   if (!usePostgreSQL) return query;
-  
+
   let paramIndex = 1;
   return query.replace(/\?/g, () => `$${paramIndex++}`);
 };
@@ -502,7 +512,7 @@ const convertQuery = (query) => {
 // Helper functions for database operations - supports both SQLite and PostgreSQL
 const dbGet = async (query, params = []) => {
   const finalQuery = convertQuery(query);
-  
+
   if (usePostgreSQL) {
     try {
       const result = await pool.query(finalQuery, params);
@@ -523,7 +533,7 @@ const dbGet = async (query, params = []) => {
 
 const dbAll = async (query, params = []) => {
   const finalQuery = convertQuery(query);
-  
+
   if (usePostgreSQL) {
     try {
       const result = await pool.query(finalQuery, params);
@@ -544,7 +554,7 @@ const dbAll = async (query, params = []) => {
 
 const dbRun = async (query, params = []) => {
   const finalQuery = convertQuery(query);
-  
+
   if (usePostgreSQL) {
     try {
       const result = await pool.query(finalQuery, params);
@@ -555,7 +565,7 @@ const dbRun = async (query, params = []) => {
     }
   } else {
     return new Promise((resolve, reject) => {
-      db.run(query, params, function(err) {
+      db.run(query, params, function (err) {
         if (err) reject(err);
         else resolve({ lastID: this.lastID, changes: this.changes });
       });
@@ -678,7 +688,7 @@ app.post('/api/auth/register', async (req, res) => {
     );
 
     const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
-    
+
     res.json({
       token,
       merchant: {
@@ -694,7 +704,7 @@ app.post('/api/auth/register', async (req, res) => {
     console.error('Error stack:', error.stack);
     // Provide more detailed error message for debugging
     const errorMessage = error.message || 'Registration failed';
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Registration failed',
       details: process.env.NODE_ENV === 'production' ? undefined : errorMessage
     });
@@ -710,7 +720,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const merchant = await dbGet('SELECT * FROM merchants WHERE email = ?', [email]);
-    
+
     if (!merchant) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -721,7 +731,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign({ id: merchant.id, email: merchant.email }, JWT_SECRET, { expiresIn: '7d' });
-    
+
     res.json({
       token,
       merchant: {
@@ -751,7 +761,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
        FROM merchants WHERE id = ?`,
       [req.user.id]
     );
-    
+
     if (!merchant) {
       return res.status(404).json({ error: 'Merchant not found' });
     }
@@ -1031,11 +1041,11 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
     }
 
     const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Crypto exchange rates (mock - in production, fetch from exchange API)
     const rates = { btc: 65000, eth: 3700, sol: 45 };
     const cryptoAmount = amount_cad / rates[asset];
-    
+
     // Generate mock addresses
     const addresses = {
       btc: `lnbc${Math.random().toString(36).substr(2, 20)}...${Math.random().toString(36).substr(2, 10)}`,
@@ -1052,14 +1062,14 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
     );
 
     const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [paymentId]));
-    
+
     // Emit WebSocket event
     io.emit('payment:created', { paymentId, merchantId: req.user.id, payment });
-    
+
     // Generate payment URL - use environment variable or default to localhost
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const paymentUrl = `${frontendUrl}/payment/${paymentId}`;
-    
+
     res.json({
       ...payment,
       payment_url: paymentUrl
@@ -1086,11 +1096,11 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
 app.get('/api/payments/:id', async (req, res) => {
   try {
     const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
-    
+
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
     }
-    
+
     res.json(payment);
   } catch (error) {
     console.error('Get payment error:', error);
@@ -1101,7 +1111,7 @@ app.get('/api/payments/:id', async (req, res) => {
 app.post('/api/payments/:id/verify', async (req, res) => {
   try {
     const payment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
-    
+
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
     }
@@ -1112,7 +1122,7 @@ app.post('/api/payments/:id/verify', async (req, res) => {
 
     // Update payment status
     await dbRun('UPDATE payments SET status = ? WHERE id = ?', ['paid', req.params.id]);
-    
+
     // Create transaction record
     const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     await dbRun(
@@ -1122,10 +1132,10 @@ app.post('/api/payments/:id/verify', async (req, res) => {
     );
 
     const updatedPayment = normalizePayment(await dbGet('SELECT * FROM payments WHERE id = ?', [req.params.id]));
-    
+
     // Emit WebSocket event
     io.emit('payment:paid', { paymentId: req.params.id, payment: updatedPayment });
-    
+
     res.json({ success: true, payment: updatedPayment });
   } catch (error) {
     console.error('Verify payment error:', error);
@@ -1213,10 +1223,10 @@ app.get('/api/kyc/documents/:id/download', authenticateToken, async (req, res) =
 app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     // Use appropriate date function for database type
-    const dateFilter = usePostgreSQL 
+    const dateFilter = usePostgreSQL
       ? "created_at > NOW() - INTERVAL '30 days'"
       : "created_at > datetime('now', '-30 days')";
-    
+
     const stats = await dbGet(`
       SELECT 
         COALESCE(SUM(amount_cad), 0) as total_volume,
@@ -1705,8 +1715,8 @@ app.get('/api/admin/merchants/:id', authenticateToken, isAdmin, async (req, res)
       [req.params.id]
     );
 
-    res.json({ 
-      ...merchant, 
+    res.json({
+      ...merchant,
       ...stats,
       beneficialOwners,
       documents,
@@ -1721,7 +1731,7 @@ app.get('/api/admin/merchants/:id', authenticateToken, isAdmin, async (req, res)
 app.patch('/api/admin/merchants/:id/kyc-status', authenticateToken, isAdmin, async (req, res) => {
   try {
     const { kyc_status } = req.body;
-    
+
     if (!['pending', 'approved', 'rejected', 'in-review'].includes(kyc_status)) {
       return res.status(400).json({ error: 'Invalid KYC status' });
     }
@@ -1743,7 +1753,7 @@ app.patch('/api/admin/merchants/:id/kyc-status', authenticateToken, isAdmin, asy
 
 app.get('/api/admin/transactions/monitoring', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const dateFilter = usePostgreSQL 
+    const dateFilter = usePostgreSQL
       ? "created_at::date = CURRENT_DATE"
       : "date(created_at) = date('now')";
 

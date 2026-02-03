@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
-import { Wallet, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Wallet, Mail, Lock, Loader2, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -19,6 +19,32 @@ export function MarketingNav({ onNavigate }: MarketingNavProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  // Check backend status on mount and periodically
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+        const response = await fetch(`${API_BASE}/health`, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          setBackendStatus('online');
+        } else {
+          setBackendStatus('offline');
+        }
+      } catch (err) {
+        setBackendStatus('offline');
+      }
+    };
+
+    checkBackend();
+    // Check every 5 seconds
+    const interval = setInterval(checkBackend, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +131,25 @@ export function MarketingNav({ onNavigate }: MarketingNavProps) {
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleLogin} className="space-y-4 py-4">
+                      {/* Backend Status in Login Dialog */}
+                      {backendStatus === 'online' && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <AlertDescription className="text-green-900">
+                            Backend is running and ready
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {backendStatus === 'offline' && (
+                        <Alert className="border-red-200 bg-red-50">
+                          <XCircle className="h-4 w-4 text-red-600" />
+                          <AlertDescription className="text-red-900">
+                            Cannot connect to backend. Please make sure the backend is running at http://localhost:3001/api
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
                       {error && (
                         <Alert className="border-red-200 bg-red-50">
                           <AlertCircle className="h-4 w-4 text-red-600" />
